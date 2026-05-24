@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import PinButton from './PinButton';
+import PinButton, { readPins } from './PinButton';
 
 type Doc = {
   path: string;
@@ -49,16 +49,6 @@ function buildTree(docs: Doc[]): Node {
   return root;
 }
 
-function readPins(slug: string): string[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(`viewer.pin.${slug}`);
-    return raw ? (JSON.parse(raw) as string[]) : [];
-  } catch {
-    return [];
-  }
-}
-
 function TreeNodeView({
   node,
   branchSlug,
@@ -105,7 +95,7 @@ function TreeNodeView({
             >
               {c.name}
             </a>
-            <PinButton branchSlug={branchSlug} docPath={c.fullPath} size="sm" />
+            <PinButton branchSlug={branchSlug} itemKey={c.fullPath} kind="doc" size="sm" />
           </li>
         );
       })}
@@ -126,7 +116,7 @@ export default function DocsTree({ branchSlug, docs }: Props) {
   }, []);
 
   const pinned = useMemo(() => {
-    const set = new Set(readPins(branchSlug));
+    const set = new Set(readPins(branchSlug, 'doc'));
     return docs.filter((d) => set.has(d.path));
   }, [branchSlug, docs, pinVersion]);
 
@@ -156,7 +146,7 @@ export default function DocsTree({ branchSlug, docs }: Props) {
                   >
                     {d.path}
                   </a>
-                  <PinButton branchSlug={branchSlug} docPath={d.path} size="sm" />
+                  <PinButton branchSlug={branchSlug} itemKey={d.path} kind="doc" size="sm" />
                 </li>
               );
             })}

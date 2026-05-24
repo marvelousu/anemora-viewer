@@ -1,0 +1,147 @@
+import { useEffect, useMemo, useState } from 'react';
+import PinButton, { readPins } from './PinButton';
+
+type Album = {
+  path: string;
+  imageCount: number;
+  representativeThumb: string;
+  lastModified: string;
+};
+
+type Props = {
+  branchSlug: string;
+  albums: Album[];
+};
+
+type SortKey = 'tree' | 'updated' | 'name';
+
+function relativeTime(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return '';
+  const diffSec = Math.floor((Date.now() - then) / 1000);
+  if (diffSec < 60) return 'just now';
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)} min ago`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)} h ago`;
+  if (diffSec < 86400 * 30) return `${Math.floor(diffSec / 86400)} d ago`;
+  return new Date(iso).toISOString().slice(0, 10);
+}
+
+function AlbumCard({ branchSlug, album }: { branchSlug: string; album: Album }) {
+  return (
+    <a
+      href={`/${branchSlug}/gallery/${album.path}`}
+      className="flex items-center gap-3 p-2 rounded-xl bg-bg-subtle no-underline text-fg"
+    >
+      <div className="shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-bg">
+        <img
+          src={album.representativeThumb}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="w-full h-full object-cover"
+        />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="font-mono text-sm truncate">{album.path}</div>
+        <div className="text-xs text-fg-subtle mt-1">
+          {album.imageCount} images{album.lastModified ? ` · ${relativeTime(album.lastModified)}` : ''}
+        </div>
+      </div>
+      <PinButton branchSlug={branchSlug} itemKey={album.path} kind="album" size="sm" />
+    </a>
+  );
+}
+
+export default function GalleryAlbumList({ branchSlug, albums }: Props) {
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState<SortKey>('tree');
+  const [pinVersion, setPinVersion] = useState(0);
+
+  useEffect(() => {
+    function onPin(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.kind === 'album') setPinVersion((v) => v + 1);
+    }
+    window.addEventListener('viewer:pin-change', onPin as EventListener);
+    return () => window.removeEventListener('viewer:pin-change', onPin as EventListener);
+  }, []);
+
+  const pinnedAlbums = useMemo(() => {
+    const set = new Set(readPins(branchSlug, 'album'));
+    return albums.filter((a) => set.has(a.path));
+  }, [branchSlug, albums, pinVersion]);
+
+  const visibleAlbums = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const filtered = q
+      ? albums.filter((a) => a.path.toLowerCase().includes(q))
+      : albums.slice();
+    if (sort === 'updated') {
+      filtered.sort((a, b) => (a.lastModified < b.lastModified ? 1 : -1));
+    } else if (sort === 'name') {
+      filtered.sort((a, b) =>
+        a.path.split('/').pop()!.localeCompare(b.path.split('/').pop()!)
+      );
+    } else {
+      filtered.sort((a, b) => a.path.localeCompare(b.path));
+    }
+    return filtered;
+  }, [albums, query, sort]);
+
+  return (
+    <div className="px-2 pb-20">
+      <div className="px-1 mb-3">
+        <input
+          type="search"
+          inputMode="search"
+          placeholder="Filter albums by path..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="w-full px-3 py-2 rounded-lg bg-bg-subtle border border-border text-sm focus:outline-none focus:border-accent"
+        />
+      </div>
+
+      {pinnedAlbums.length > 0 && query === '' && (
+        <section className="mb-4">
+          <h2 className="px-1 text-xs uppercase tracking-wider text-fg-subtle mb-1">Pinned</h2>
+          <ul className="space-y-2">
+            {pinnedAlbums.map((a) => (
+              <li key={`pin-${a.path}`}>
+                <AlbumCard branchSlug={branchSlug} album={a} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <div className="flex items-center gap-2 mb-2 px-1">
+        <span className="text-xs text-fg-subtle">Sort:</span>
+        {(['tree', 'updated', 'name'] as SortKey[]).map((s) => (
+          <button
+            type="button"
+            key={s}
+            onClick={() => setSort(s)}
+            className={`px-2 py-0.5 rounded-full text-xs ${
+              sort === s ? 'bg-accent text-white' : 'bg-bg-subtle text-fg-subtle'
+            }`}
+          >
+            {s === 'tree' ? 'Tree' : s === 'updated' ? 'Updated' : 'Name'}
+          </button>
+        ))}
+        <span className="ml-auto text-xs text-fg-subtle">{visibleAlbums.length} / {albums.length}</span>
+      </div>
+
+      {visibleAlbums.length === 0 ? (
+        <p className="px-1 py-6 text-center text-xs text-fg-subtle">No albums match.</p>
+      ) : (
+        <ul className="space-y-2">
+          {visibleAlbums.map((a) => (
+            <li key={a.path}>
+              <AlbumCard branchSlug={branchSlug} album={a} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
