@@ -39,6 +39,20 @@ export default function AlbumGrid({ images, prevHref, nextHref }: Props) {
     };
   }, []);
 
+  // iOS Safari aggressively uses the back/forward cache. After window.location
+  // navigation, returning users to this page can leave React state and
+  // event-listener bookkeeping in a stale state. Force a real reload so the
+  // component re-initialises cleanly.
+  useEffect(() => {
+    function onPageShow(e: PageTransitionEvent) {
+      if (e.persisted) {
+        window.location.reload();
+      }
+    }
+    window.addEventListener('pageshow', onPageShow as EventListener);
+    return () => window.removeEventListener('pageshow', onPageShow as EventListener);
+  }, []);
+
   useEffect(() => {
     const el = swipeRef.current;
     if (!el) return;
