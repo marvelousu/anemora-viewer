@@ -73,5 +73,12 @@ export default defineConfig({
   },
   vite: {
     server: { fs: { allow: ['..'] } },
+    build: {
+      // /pagefind/* is generated post-build by the `pagefind` CLI and lives
+      // alongside the deployed site. Tell Rollup to leave the import alone.
+      rollupOptions: {
+        external: [/^\/pagefind\//],
+      },
+    },
   },
 });

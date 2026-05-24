@@ -2,6 +2,7 @@
 import BranchLayout from '@/layouts/BranchLayout.astro';
 import branchesData from '@/data/branches.json';
 import DocsTree from '@/components/DocsTree';
+import PagefindSearch from '@/components/PagefindSearch';
 
 export function getStaticPaths() {
   return branchesData.branches.map((b) => ({ params: { branch: b.slug } }));
@@ -25,6 +26,9 @@ const docs = branch.docs.map((d) => ({
       <h1 class="text-lg font-semibold">Docs</h1>
       <p class="text-xs text-fg-subtle mt-0.5">{docs.length} files</p>
     </header>
+    <div class="px-3">
+      <PagefindSearch client:idle branchSlug={branchSlug!} />
+    </div>
     <DocsTree client:load branchSlug={branchSlug!} docs={docs} />
   </main>
 </BranchLayout>
