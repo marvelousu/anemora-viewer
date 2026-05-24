@@ -16,22 +16,20 @@ type Props = {
   nextHref?: string | null;
 };
 
-const SWIPE_TRIGGER = 80; // px to commit
-const HORIZONTAL_THRESHOLD = 20; // px before we decide "this is horizontal"
-const VERTICAL_ABORT = 12; // if vertical exceeds this before horizontal is detected, abort
+// Tuning: keep the threshold low so iOS Safari has plenty of room to decide
+// the gesture is horizontal before it commits to a vertical scroll.
+const TRIGGER_DX = 60;
+const HORIZONTAL_THRESHOLD = 12;
+const VERTICAL_ABORT = 30;
 
 export default function AlbumGrid({ images, prevHref, nextHref }: Props) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const startX = useRef(0);
-  const startY = useRef(0);
-  const isHorizontal = useRef(false);
-  const aborted = useRef(false);
-  const dx = useRef(0);
+  const galleryRef = useRef<HTMLDivElement | null>(null);
+  const swipeRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!ref.current) return;
+    if (!galleryRef.current) return;
     const lightbox = new PhotoSwipeLightbox({
-      gallery: ref.current,
+      gallery: galleryRef.current,
       children: 'a[data-pswp-src]',
       pswpModule: () => import('photoswipe'),
       bgOpacity: 0.95,
@@ -43,59 +41,82 @@ export default function AlbumGrid({ images, prevHref, nextHref }: Props) {
     };
   }, []);
 
-  function reset() {
-    isHorizontal.current = false;
-    aborted.current = false;
-    dx.current = 0;
-  }
+  useEffect(() => {
+    const el = swipeRef.current;
+    if (!el) return;
 
-  function onPointerDown(e: React.PointerEvent) {
-    if (e.pointerType !== 'touch') return;
-    startX.current = e.clientX;
-    startY.current = e.clientY;
-    reset();
-  }
+    let startX = 0;
+    let startY = 0;
+    let dx = 0;
+    let isHorizontal = false;
+    let aborted = false;
 
-  function onPointerMove(e: React.PointerEvent) {
-    if (e.pointerType !== 'touch' || aborted.current) return;
-    const cdx = e.clientX - startX.current;
-    const cdy = e.clientY - startY.current;
-    if (!isHorizontal.current) {
-      if (Math.abs(cdy) > VERTICAL_ABORT) {
-        aborted.current = true;
+    function reset() {
+      isHorizontal = false;
+      aborted = false;
+      dx = 0;
+    }
+
+    function onStart(e: TouchEvent) {
+      if (e.touches.length !== 1) {
+        aborted = true;
         return;
       }
-      if (Math.abs(cdx) > HORIZONTAL_THRESHOLD && Math.abs(cdx) > Math.abs(cdy) * 1.5) {
-        isHorizontal.current = true;
-      }
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      reset();
     }
-    dx.current = cdx;
-    if (isHorizontal.current) {
-      e.preventDefault();
-    }
-  }
 
-  function onPointerEnd(e: React.PointerEvent) {
-    if (e.pointerType !== 'touch') return;
-    const committed = isHorizontal.current && !aborted.current && Math.abs(dx.current) > SWIPE_TRIGGER;
-    if (committed) {
-      if (dx.current > 0 && prevHref) {
-        window.location.href = prevHref;
-      } else if (dx.current < 0 && nextHref) {
-        window.location.href = nextHref;
+    function onMove(e: TouchEvent) {
+      if (aborted || e.touches.length !== 1) return;
+      const cdx = e.touches[0].clientX - startX;
+      const cdy = e.touches[0].clientY - startY;
+      if (!isHorizontal) {
+        if (Math.abs(cdy) > VERTICAL_ABORT) {
+          aborted = true;
+          return;
+        }
+        if (Math.abs(cdx) > HORIZONTAL_THRESHOLD && Math.abs(cdx) > Math.abs(cdy)) {
+          isHorizontal = true;
+        }
+      }
+      dx = cdx;
+      if (isHorizontal) {
+        // Required to keep the page from interpreting the gesture as a
+        // vertical scroll once we've claimed it.
+        e.preventDefault();
       }
     }
-    reset();
-  }
+
+    function onEnd() {
+      const committed = isHorizontal && !aborted && Math.abs(dx) > TRIGGER_DX;
+      if (committed) {
+        if (dx > 0 && prevHref) {
+          window.location.href = prevHref;
+        } else if (dx < 0 && nextHref) {
+          window.location.href = nextHref;
+        }
+      }
+      reset();
+    }
+
+    // passive: false on touchmove is essential — without it iOS ignores
+    // preventDefault() and the page just scrolls.
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchmove', onMove, { passive: false });
+    el.addEventListener('touchend', onEnd, { passive: true });
+    el.addEventListener('touchcancel', onEnd, { passive: true });
+
+    return () => {
+      el.removeEventListener('touchstart', onStart as EventListener);
+      el.removeEventListener('touchmove', onMove as EventListener);
+      el.removeEventListener('touchend', onEnd as EventListener);
+      el.removeEventListener('touchcancel', onEnd as EventListener);
+    };
+  }, [prevHref, nextHref]);
 
   return (
-    <div
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerEnd}
-      onPointerCancel={onPointerEnd}
-      style={{ touchAction: 'pan-y' }}
-    >
+    <div ref={swipeRef} style={{ touchAction: 'pan-y' }}>
       {(prevHref || nextHref) && (
         <div className="flex items-center justify-between px-3 py-2 text-xs text-fg-subtle">
           <div>
@@ -121,7 +142,7 @@ export default function AlbumGrid({ images, prevHref, nextHref }: Props) {
           </div>
         </div>
       )}
-      <div ref={ref} className="grid grid-cols-3 gap-1 p-1">
+      <div ref={galleryRef} className="grid grid-cols-3 gap-1 p-1">
         {images.map((img) => {
           const w = img.width || 1024;
           const h = img.height || 1024;
