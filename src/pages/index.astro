@@ -1,0 +1,20 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import branchesData from '@/data/branches.json';
+import HomeCardList from '@/components/HomeCardList.tsx';
+
+type BranchesJson = typeof branchesData;
+const branches = (branchesData as BranchesJson).branches ?? [];
+---
+
+<BaseLayout title="Viewer">
+  <main class="min-h-dvh">
+    <header class="safe-top px-4 pt-4 pb-2">
+      <h1 class="text-xl font-semibold">Branches</h1>
+      <p class="text-sm text-fg-subtle mt-1">
+        {branches.length} active {branches.length === 1 ? 'branch' : 'branches'}
+      </p>
+    </header>
+    <HomeCardList client:load branches={branches} />
+  </main>
+</BaseLayout>
