@@ -16,8 +16,6 @@ type Props = {
   nextHref?: string | null;
 };
 
-// Tuning: keep the threshold low so iOS Safari has plenty of room to decide
-// the gesture is horizontal before it commits to a vertical scroll.
 const TRIGGER_DX = 60;
 const HORIZONTAL_THRESHOLD = 12;
 const VERTICAL_ABORT = 30;
@@ -82,8 +80,6 @@ export default function AlbumGrid({ images, prevHref, nextHref }: Props) {
       }
       dx = cdx;
       if (isHorizontal) {
-        // Required to keep the page from interpreting the gesture as a
-        // vertical scroll once we've claimed it.
         e.preventDefault();
       }
     }
@@ -100,8 +96,6 @@ export default function AlbumGrid({ images, prevHref, nextHref }: Props) {
       reset();
     }
 
-    // passive: false on touchmove is essential — without it iOS ignores
-    // preventDefault() and the page just scrolls.
     el.addEventListener('touchstart', onStart, { passive: true });
     el.addEventListener('touchmove', onMove, { passive: false });
     el.addEventListener('touchend', onEnd, { passive: true });
@@ -116,32 +110,7 @@ export default function AlbumGrid({ images, prevHref, nextHref }: Props) {
   }, [prevHref, nextHref]);
 
   return (
-    <div ref={swipeRef} style={{ touchAction: 'pan-y' }}>
-      {(prevHref || nextHref) && (
-        <div className="flex items-center justify-between px-3 py-2 text-xs text-fg-subtle">
-          <div>
-            {prevHref ? (
-              <a href={prevHref} className="no-underline inline-flex items-center gap-1">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="15 18 9 12 15 6" />
-                </svg>
-                prev
-              </a>
-            ) : <span>&nbsp;</span>}
-          </div>
-          <div className="opacity-60">swipe ←/→</div>
-          <div>
-            {nextHref ? (
-              <a href={nextHref} className="no-underline inline-flex items-center gap-1">
-                next
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </a>
-            ) : <span>&nbsp;</span>}
-          </div>
-        </div>
-      )}
+    <div ref={swipeRef} style={{ touchAction: 'pan-y' }} className="pb-16">
       <div ref={galleryRef} className="grid grid-cols-3 gap-1 p-1">
         {images.map((img) => {
           const w = img.width || 1024;
@@ -166,6 +135,49 @@ export default function AlbumGrid({ images, prevHref, nextHref }: Props) {
           );
         })}
       </div>
+
+      {(prevHref || nextHref) && (
+        <div
+          className="fixed left-0 right-0 z-20 bg-bg/95 backdrop-blur border-t border-border"
+          style={{ bottom: 'calc(env(safe-area-inset-bottom) + 56px)' }}
+          role="navigation"
+          aria-label="Album navigation"
+        >
+          <div className="flex items-stretch h-12">
+            {prevHref ? (
+              <a
+                href={prevHref}
+                className="flex-1 flex items-center justify-center gap-2 text-sm text-fg no-underline active:bg-bg-subtle"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+                <span>prev album</span>
+              </a>
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-sm text-fg-subtle/40">
+                <span>—</span>
+              </div>
+            )}
+            <div className="w-px bg-border" />
+            {nextHref ? (
+              <a
+                href={nextHref}
+                className="flex-1 flex items-center justify-center gap-2 text-sm text-fg no-underline active:bg-bg-subtle"
+              >
+                <span>next album</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </a>
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-sm text-fg-subtle/40">
+                <span>—</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
