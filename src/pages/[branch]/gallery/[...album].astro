@@ -17,9 +17,17 @@ export function getStaticPaths() {
     const sortedAlbums = b.albums
       .slice()
       .sort((a, c) => a.path.localeCompare(c.path));
-    sortedAlbums.forEach((a, i) => {
-      const prev = i > 0 ? sortedAlbums[i - 1].path : null;
-      const next = i < sortedAlbums.length - 1 ? sortedAlbums[i + 1].path : null;
+    // Two peer lists: review-only for cycles under docs/review/*, full
+    // list otherwise. Albums navigate within their own context so the
+    // prev/next bar moves between sibling review cycles when viewing a
+    // review album, and between sibling folders for everything else.
+    const reviewAlbums = sortedAlbums.filter((a) => a.path.startsWith('docs/review/'));
+    sortedAlbums.forEach((a) => {
+      const inReview = a.path.startsWith('docs/review/');
+      const peerList = inReview ? reviewAlbums : sortedAlbums;
+      const i = peerList.findIndex((p) => p.path === a.path);
+      const prev = i > 0 ? peerList[i - 1].path : null;
+      const next = i >= 0 && i < peerList.length - 1 ? peerList[i + 1].path : null;
       out.push({
         params: { branch: b.slug, album: a.path },
         props: {
