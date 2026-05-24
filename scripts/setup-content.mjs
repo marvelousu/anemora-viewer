@@ -1,16 +1,23 @@
 #!/usr/bin/env node
-// Step 2: Fetch Anemora source and select active branches.
+// Step 2: Fetch the source repository and materialize per-branch content trees.
 //
 // Pipeline:
-//   1. Clone (or refresh) Anemora repo as a bare-ish working copy under content/anemora-raw
-//   2. Enumerate work/* branches; keep only those whose tip commit is within ACTIVE_DAYS
-//   3. Sparse-checkout each active branch into content/branches/<slug>/
-//   4. Invoke scripts/collect-content.mjs (Step 3) to produce branches.json + thumbs
+//   1. Clone (or refresh) the source repo into content/anemora-raw
+//      (--filter=blob:none keeps the clone small; blobs are lazily fetched
+//      when git archive needs them).
+//   2. Enumerate origin/work/* branches whose tip commit is within ACTIVE_DAYS.
+//   3. For each active branch, extract the needed paths into
+//      content/branches/<slug>/ via `git archive | tar -x`. This avoids the
+//      fragility of `git sparse-checkout` over `--shared` clones with refs
+//      that aren't fetched.
+//   4. Write content/branches/index.json with branch metadata.
+//   5. Chain to scripts/collect-content.mjs (Step 3) if present.
 //
 // Designed to run on both local dev and Cloudflare Pages build.
+// The source repo (marvelousu/anemora) is public, so no auth is required.
 
 import { execSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -23,27 +30,32 @@ const ACTIVE_DAYS = Number(process.env.ACTIVE_DAYS ?? 30);
 const RAW_DIR = path.join(REPO_ROOT, 'content', 'anemora-raw');
 const BRANCHES_DIR = path.join(REPO_ROOT, 'content', 'branches');
 
-const SPARSE_PATTERNS = [
-  '/*.md',
-  '/docs/',
-  '/Assets/Art/',
-  '/Assets/UI/',
-];
+// Paths to extract from each branch tip. Directories are pulled recursively;
+// the '*.md' pathspec grabs Markdown files at any depth (including root-level
+// AUTHORS.md / CHANGELOG.md etc.).
+const TARGET_DIRS = ['docs', 'Assets/Art', 'Assets/UI'];
+const TARGET_GLOBS = ['*.md'];
 
-const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif'];
-
-function sh(cmd, opts = {}) {
-  return execSync(cmd, { stdio: 'pipe', encoding: 'utf8', ...opts }).trim();
+function sh(cmd) {
+  return execSync(cmd, { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' }).trim();
 }
 
-function shStream(cmd, opts = {}) {
-  const r = spawnSync('bash', ['-lc', cmd], { stdio: 'inherit', ...opts });
-  if (r.status !== 0) throw new Error(`Command failed: ${cmd}`);
+function shStream(cmd) {
+  const r = spawnSync('bash', ['-lc', cmd], { stdio: 'inherit' });
+  if (r.status !== 0) throw new Error(`Command failed (exit ${r.status}): ${cmd}`);
 }
 
 function ensureCleanDir(dir) {
   if (existsSync(dir)) rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
+}
+
+function slugify(branchName) {
+  // "work/chapter1-continuation-20260520" -> "chapter1-continuation-20260520"
+  return branchName
+    .replace(/^work\//, '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 function fetchSourceRepo() {
@@ -58,83 +70,103 @@ function fetchSourceRepo() {
 }
 
 function listActiveWorkBranches() {
+  const sep = String.fromCharCode(0x1f);
+  const fmt = `%(refname:short)${sep}%(committerdate:unix)${sep}%(objectname:short)${sep}%(contents:subject)`;
   const raw = sh(
-    `git -C "${RAW_DIR}" for-each-ref --format='%(refname:short)|%(committerdate:unix)|%(objectname:short)|%(contents:subject)' refs/remotes/origin/work`
+    `git -C "${RAW_DIR}" for-each-ref --format='${fmt}' refs/remotes/origin/work`
   );
   const now = Math.floor(Date.now() / 1000);
   const cutoff = now - ACTIVE_DAYS * 86400;
   const branches = [];
   for (const line of raw.split('\n').filter(Boolean)) {
-    const [refname, ts, sha, ...subjectParts] = line.split('|');
+    const [refname, ts, sha, subject] = line.split(sep);
     const date = Number(ts);
-    if (date < cutoff) continue;
+    if (Number.isNaN(date) || date < cutoff) continue;
     const name = refname.replace(/^origin\//, '');
     if (!name.startsWith('work/')) continue;
     branches.push({
       name,
-      slug: name.replace(/^work\//, '').replace(/[^a-zA-Z0-9._-]+/g, '-'),
+      slug: slugify(name),
       sha,
       date: new Date(date * 1000).toISOString(),
-      message: subjectParts.join('|'),
+      dateUnix: date,
+      message: subject ?? '',
     });
   }
-  branches.sort((a, b) => (a.date < b.date ? 1 : -1));
+  branches.sort((a, b) => b.dateUnix - a.dateUnix);
   return branches;
+}
+
+function pathExistsAt(sha, p) {
+  try {
+    sh(`git -C "${RAW_DIR}" rev-parse "${sha}:${p}"`);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function checkoutBranch(branch) {
   const dest = path.join(BRANCHES_DIR, branch.slug);
   ensureCleanDir(dest);
-
-  // Initialise a sparse working tree pointing at the same .git as RAW_DIR
-  shStream(`git clone --shared --no-checkout "${RAW_DIR}" "${dest}"`);
-  shStream(`git -C "${dest}" sparse-checkout init --cone=false`);
-  const patternFile = path.join(dest, '.git', 'info', 'sparse-checkout');
-  // cone=false expects exact patterns; write them
-  const fs = require('node:fs');
-  // ESM workaround: we already imported fs at top; just use mkdirSync etc.
-  // Use writeFileSync via dynamic import to avoid mixing styles.
+  // Filter to paths that exist at this commit; archive errors otherwise.
+  const presentDirs = TARGET_DIRS.filter((p) => pathExistsAt(branch.sha, p));
+  // Globs (like *.md) don't fit cat-file checks; pass them through unconditionally.
+  const pathspec = [
+    ...presentDirs.map((p) => `'${p}'`),
+    ...TARGET_GLOBS.map((g) => `':(glob)${g}'`),
+  ].join(' ');
+  shStream(
+    `git -C "${RAW_DIR}" archive --format=tar "${branch.sha}" -- ${pathspec} | tar -x -C "${dest}"`
+  );
 }
 
-// Top-level
-try {
+function main() {
+  console.log(`[setup-content] ACTIVE_DAYS=${ACTIVE_DAYS}`);
+
   if (existsSync(BRANCHES_DIR)) rmSync(BRANCHES_DIR, { recursive: true, force: true });
   mkdirSync(BRANCHES_DIR, { recursive: true });
 
   fetchSourceRepo();
+
   const branches = listActiveWorkBranches();
   console.log(`[setup-content] active branches: ${branches.length}`);
   for (const b of branches) {
-    console.log(`  - ${b.name} (${b.date.slice(0, 10)})`);
+    console.log(`  - ${b.name} (${b.date.slice(0, 10)}) -> ${b.slug}`);
   }
 
-  // Sparse-checkout each
-  const { writeFileSync } = await import('node:fs');
   for (const b of branches) {
-    const dest = path.join(BRANCHES_DIR, b.slug);
-    ensureCleanDir(dest);
-    shStream(`git clone --shared --no-checkout "${RAW_DIR}" "${dest}"`);
-    shStream(`git -C "${dest}" sparse-checkout init --no-cone`);
-    writeFileSync(path.join(dest, '.git', 'info', 'sparse-checkout'), SPARSE_PATTERNS.join('\n') + '\n');
-    shStream(`git -C "${dest}" checkout "origin/${b.name}"`);
+    console.log(`[setup-content] extracting ${b.name} -> ${b.slug}`);
+    checkoutBranch(b);
   }
 
-  // Persist branch metadata for collect-content
-  const { writeFileSync: write2 } = await import('node:fs');
-  write2(
-    path.join(BRANCHES_DIR, 'index.json'),
-    JSON.stringify({ generatedAt: new Date().toISOString(), branches }, null, 2)
-  );
+  const indexJson = {
+    generatedAt: new Date().toISOString(),
+    activeDays: ACTIVE_DAYS,
+    source: SOURCE_REPO,
+    rawRepoDir: path.relative(REPO_ROOT, RAW_DIR),
+    branches: branches.map(({ name, slug, sha, date, message }) => ({
+      name,
+      slug,
+      sha,
+      date,
+      message,
+    })),
+  };
+  writeFileSync(path.join(BRANCHES_DIR, 'index.json'), JSON.stringify(indexJson, null, 2));
+  console.log(`[setup-content] wrote content/branches/index.json`);
 
-  console.log('[setup-content] done. Run scripts/collect-content.mjs next.');
-
-  // Chain to collect-content if it exists
   const collectScript = path.join(REPO_ROOT, 'scripts', 'collect-content.mjs');
   if (existsSync(collectScript)) {
+    console.log(`[setup-content] -> collect-content.mjs`);
     shStream(`node "${collectScript}"`);
   } else {
     console.log('[setup-content] collect-content.mjs not present yet (Step 3 pending).');
   }
+}
+
+try {
+  main();
 } catch (err) {
   console.error('[setup-content] ERROR:', err.message);
   process.exit(1);

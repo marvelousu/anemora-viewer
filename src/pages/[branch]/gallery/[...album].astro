@@ -1,0 +1,45 @@
+---
+import BranchLayout from '@/layouts/BranchLayout.astro';
+import branchesData from '@/data/branches.json';
+import AlbumGrid from '@/components/AlbumGrid';
+
+export function getStaticPaths() {
+  const out: Array<{ params: { branch: string; album: string } }> = [];
+  for (const b of branchesData.branches) {
+    for (const a of b.albums) {
+      out.push({ params: { branch: b.slug, album: a.path } });
+    }
+  }
+  return out;
+}
+
+const { branch: branchSlug, album: albumPath } = Astro.params;
+const branch = branchesData.branches.find((b) => b.slug === branchSlug);
+if (!branch) throw new Error(`Branch not found: ${branchSlug}`);
+const album = branch.albums.find((a) => a.path === albumPath);
+if (!album) throw new Error(`Album not found: ${branchSlug}/${albumPath}`);
+
+const images = album.images.map((i) => ({
+  filename: i.filename,
+  thumbUrl: i.thumbUrl,
+  originalUrl: i.originalUrl,
+  width: i.width,
+  height: i.height,
+}));
+---
+
+<BranchLayout title={`${album.path} — Gallery`} branchSlug={branchSlug!} tab="gallery">
+  <main class="min-h-dvh">
+    <header class="px-4 pt-3 pb-2">
+      <a href={`/${branchSlug}/gallery`} class="text-xs text-fg-subtle no-underline inline-flex items-center gap-1">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+        All albums
+      </a>
+      <h1 class="text-base font-mono mt-1 break-all">{album.path}</h1>
+      <p class="text-xs text-fg-subtle mt-0.5">{images.length} images</p>
+    </header>
+    <AlbumGrid client:load images={images} />
+  </main>
+</BranchLayout>

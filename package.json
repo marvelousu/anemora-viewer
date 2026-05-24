@@ -6,7 +6,7 @@
   "description": "Mobile viewer (PWA) for the Anemora project",
   "scripts": {
     "dev": "astro dev",
-    "build": "node scripts/setup-content.mjs && astro build && pagefind --site dist --bundle-dir pagefind",
+    "build": "node scripts/setup-content.mjs && node scripts/generate-icons.mjs && astro build && pagefind --site dist --bundle-dir pagefind",
     "build:fast": "astro build",
     "preview": "astro preview",
     "astro": "astro",
@@ -16,6 +16,7 @@
     "@astrojs/check": "^0.9.4",
     "@astrojs/react": "^4.2.0",
     "@astrojs/tailwind": "^5.1.4",
+    "@tailwindcss/typography": "^0.5.19",
     "@vite-pwa/astro": "^0.5.0",
     "astro": "^5.1.0",
     "framer-motion": "^11.18.0",

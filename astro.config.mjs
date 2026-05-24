@@ -29,7 +29,22 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: '/offline',
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        // Precache only the shell + static assets. HTML pages and images are
+        // cached at runtime via runtimeCaching (below). This keeps the initial
+        // PWA install well under iOS's ~50MB Service Worker limit.
+        globPatterns: ['index.html', '404.html', 'offline/index.html', 'manifest.webmanifest', 'icons/**', '_astro/**/*.{js,css,woff2}'],
+        navigateFallbackDenylist: [/^\/thumbs/, /^\/originals/, /^\/pagefind/, /^\/sw\.js$/, /^\/workbox-/],
         runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'pages',
+              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 7 },
+              networkTimeoutSeconds: 5,
+            },
+          },
           {
             urlPattern: /\.(?:png|jpg|jpeg|webp|svg|gif)$/,
             handler: 'StaleWhileRevalidate',

@@ -3,8 +3,15 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 import branchesData from '@/data/branches.json';
 import HomeCardList from '@/components/HomeCardList.tsx';
 
-type BranchesJson = typeof branchesData;
-const branches = (branchesData as BranchesJson).branches ?? [];
+// Pass only the summary fields needed for the Home cards.
+// The full data (albums + docs + images) is consumed by per-branch pages.
+const branches = (branchesData.branches ?? []).map((b) => ({
+  name: b.name,
+  slug: b.slug,
+  lastCommit: b.lastCommit,
+  touchedRecent7d: b.touchedRecent7d,
+  representativeImage: b.representativeImage,
+}));
 ---
 
 <BaseLayout title="Viewer">

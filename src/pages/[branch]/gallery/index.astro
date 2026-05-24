@@ -1,0 +1,62 @@
+---
+import BranchLayout from '@/layouts/BranchLayout.astro';
+import branchesData from '@/data/branches.json';
+
+export function getStaticPaths() {
+  return branchesData.branches.map((b) => ({ params: { branch: b.slug } }));
+}
+
+const { branch: branchSlug } = Astro.params;
+const branch = branchesData.branches.find((b) => b.slug === branchSlug);
+if (!branch) throw new Error(`Branch not found: ${branchSlug}`);
+
+// Slim albums (no per-image metadata)
+const albums = branch.albums.map((a) => ({
+  path: a.path,
+  imageCount: a.imageCount,
+  representativeThumb: a.representativeThumb,
+  lastModified: a.lastModified,
+}));
+---
+
+<BranchLayout title={`Gallery — ${branch.name}`} branchSlug={branchSlug!} tab="gallery">
+  <main class="min-h-dvh">
+    <header class="px-4 pt-3 pb-2">
+      <h1 class="text-lg font-semibold">Gallery</h1>
+      <p class="text-xs text-fg-subtle mt-0.5">
+        {albums.length} albums · {branch.albums.reduce((s, a) => s + a.imageCount, 0)} images
+      </p>
+    </header>
+    {albums.length === 0 ? (
+      <p class="px-4 py-8 text-center text-fg-subtle">No images in this branch.</p>
+    ) : (
+      <ul class="px-2 space-y-2">
+        {albums.map((a) => (
+          <li>
+            <a
+              href={`/${branchSlug}/gallery/${a.path}`}
+              class="flex items-center gap-3 p-2 rounded-xl bg-bg-subtle no-underline text-fg"
+            >
+              <div class="shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-bg">
+                <img
+                  src={a.representativeThumb}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  class="w-full h-full object-cover"
+                />
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="font-mono text-sm truncate">{a.path}</div>
+                <div class="text-xs text-fg-subtle mt-1">{a.imageCount} images</div>
+              </div>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </a>
+          </li>
+        ))}
+      </ul>
+    )}
+  </main>
+</BranchLayout>
