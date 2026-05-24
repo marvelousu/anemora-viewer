@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { TabKey } from './TabBar';
 
 type BranchSummary = {
   name: string;
@@ -8,7 +9,7 @@ type BranchSummary = {
 type Props = {
   branches: BranchSummary[];
   currentSlug: string;
-  baseTab: 'gallery' | 'docs';
+  baseTab: TabKey;
 };
 
 export default function BranchDropdown({ branches, currentSlug, baseTab }: Props) {

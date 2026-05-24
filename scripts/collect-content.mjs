@@ -73,6 +73,8 @@ function walkFiles(dir, relBase = '') {
 
 function classify(rel) {
   const ext = path.posix.extname(rel).toLowerCase();
+  const base = path.posix.basename(rel);
+  if (base === 'devlog.txt') return 'devlog-ref';
   if (DOC_EXTS.has(ext)) return 'doc';
   if (RASTER_EXTS.has(ext) || VECTOR_EXTS.has(ext)) return 'image';
   if (META_EXTS.has(ext)) return 'skip';
@@ -189,10 +191,24 @@ async function processBranch(branch) {
   const docs = [];
   const unsupported = [];
   const imageFiles = [];
+  // album directory path -> devlog md path (first non-empty line of devlog.txt)
+  const devlogRefs = new Map();
 
   for (const f of files) {
     const c = classify(f.rel);
     if (c === 'skip') continue;
+    if (c === 'devlog-ref') {
+      try {
+        const raw = readFileSync(f.full, 'utf8');
+        const firstLine = raw.split(/\r?\n/).map((l) => l.trim()).find((l) => l.length > 0 && !l.startsWith('#'));
+        if (firstLine) {
+          devlogRefs.set(path.posix.dirname(f.rel), firstLine);
+        }
+      } catch {
+        // ignore unreadable devlog.txt
+      }
+      continue;
+    }
     if (c === 'doc') {
       docs.push(processDoc(branch, f));
     } else if (c === 'image') {
@@ -231,6 +247,7 @@ async function processBranch(branch) {
         representativeThumb: sorted[0].thumbUrl,
         lastModified,
         images: sorted,
+        devlogRef: devlogRefs.get(dirPath) ?? null,
       };
     })
     .sort((a, b) => a.path.localeCompare(b.path));

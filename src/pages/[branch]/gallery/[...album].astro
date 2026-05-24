@@ -4,16 +4,38 @@ import branchesData from '@/data/branches.json';
 import AlbumGrid from '@/components/AlbumGrid';
 
 export function getStaticPaths() {
-  const out: Array<{ params: { branch: string; album: string } }> = [];
+  const out: Array<{
+    params: { branch: string; album: string };
+    props: {
+      docPath: string;
+      branchName: string;
+      prevAlbumPath: string | null;
+      nextAlbumPath: string | null;
+    };
+  }> = [];
   for (const b of branchesData.branches) {
-    for (const a of b.albums) {
-      out.push({ params: { branch: b.slug, album: a.path } });
-    }
+    const sortedAlbums = b.albums
+      .slice()
+      .sort((a, c) => a.path.localeCompare(c.path));
+    sortedAlbums.forEach((a, i) => {
+      const prev = i > 0 ? sortedAlbums[i - 1].path : null;
+      const next = i < sortedAlbums.length - 1 ? sortedAlbums[i + 1].path : null;
+      out.push({
+        params: { branch: b.slug, album: a.path },
+        props: {
+          docPath: a.path,
+          branchName: b.name,
+          prevAlbumPath: prev,
+          nextAlbumPath: next,
+        },
+      });
+    });
   }
   return out;
 }
 
 const { branch: branchSlug, album: albumPath } = Astro.params;
+const { prevAlbumPath, nextAlbumPath } = Astro.props;
 const branch = branchesData.branches.find((b) => b.slug === branchSlug);
 if (!branch) throw new Error(`Branch not found: ${branchSlug}`);
 const album = branch.albums.find((a) => a.path === albumPath);
@@ -26,20 +48,45 @@ const images = album.images.map((i) => ({
   width: i.width,
   height: i.height,
 }));
+
+const devlogRef: string | null = (album as any).devlogRef ?? null;
+const devlogHref = devlogRef ? `/${branchSlug}/docs/${devlogRef.replace(/\.md$/, '')}` : null;
+
+const prevHref = prevAlbumPath ? `/${branchSlug}/gallery/${prevAlbumPath}` : null;
+const nextHref = nextAlbumPath ? `/${branchSlug}/gallery/${nextAlbumPath}` : null;
+
+// Use the back tab consistent with where the user likely came from:
+// docs/review/* -> review, otherwise gallery
+const tab = albumPath?.startsWith('docs/review/') ? 'review' : 'gallery';
+const backHref = tab === 'review' ? `/${branchSlug}/review` : `/${branchSlug}/gallery`;
+const backLabel = tab === 'review' ? 'All review cycles' : 'All albums';
 ---
 
-<BranchLayout title={`${album.path} — Gallery`} branchSlug={branchSlug!} tab="gallery">
+<BranchLayout title={`${album.path} — Gallery`} branchSlug={branchSlug!} tab={tab}>
   <main class="min-h-dvh">
     <header class="px-4 pt-3 pb-2">
-      <a href={`/${branchSlug}/gallery`} class="text-xs text-fg-subtle no-underline inline-flex items-center gap-1">
+      <a href={backHref} class="text-xs text-fg-subtle no-underline inline-flex items-center gap-1">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="15 18 9 12 15 6" />
         </svg>
-        All albums
+        {backLabel}
       </a>
       <h1 class="text-base font-mono mt-1 break-all">{album.path}</h1>
       <p class="text-xs text-fg-subtle mt-0.5">{images.length} images</p>
+      {devlogHref && (
+        <a
+          href={devlogHref}
+          class="mt-2 inline-flex items-center gap-1.5 text-xs text-accent no-underline px-2 py-1 rounded-full bg-bg-subtle"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="9" y1="13" x2="15" y2="13" />
+          </svg>
+          <span>devlog: {devlogRef}</span>
+        </a>
+      )}
     </header>
-    <AlbumGrid client:load images={images} />
+    <AlbumGrid client:load images={images} prevHref={prevHref} nextHref={nextHref} />
   </main>
 </BranchLayout>

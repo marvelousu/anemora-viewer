@@ -1,12 +1,13 @@
 import BranchDropdown from './BranchDropdown';
 import ThemeToggle from './ThemeToggle';
+import type { TabKey } from './TabBar';
 
 type BranchSummary = { name: string; slug: string };
 
 type Props = {
   branches: BranchSummary[];
   currentSlug: string;
-  baseTab: 'gallery' | 'docs';
+  baseTab: TabKey;
   homeHref?: string;
 };
 

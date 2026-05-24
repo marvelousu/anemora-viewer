@@ -3,11 +3,12 @@ import BaseLayout from './BaseLayout.astro';
 import branchesData from '@/data/branches.json';
 import TopBar from '@/components/TopBar';
 import TabBar from '@/components/TabBar';
+import type { TabKey } from '@/components/TabBar';
 
 type Props = {
   title?: string;
   branchSlug: string;
-  tab: 'gallery' | 'docs';
+  tab: TabKey;
 };
 
 const { title, branchSlug, tab } = Astro.props;

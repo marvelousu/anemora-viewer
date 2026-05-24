@@ -45,7 +45,7 @@ export default function HomeCardList({ branches }: Props) {
           transition={{ duration: 0.2, delay: i * 0.05 }}
         >
           <a
-            href={`/${b.slug}/gallery`}
+            href={`/${b.slug}/review`}
             className="block rounded-2xl overflow-hidden border border-border bg-bg-subtle no-underline"
           >
             <div className="aspect-[16/9] bg-bg-subtle relative">

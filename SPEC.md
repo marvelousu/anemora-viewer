@@ -412,7 +412,42 @@ node scripts/setup-content.mjs && npm run build && npx pagefind --site dist --bu
 
 ---
 
-## 13. 残課題・将来拡張
+## 13.5 Anemora source repo conventions for review workflow
+
+The viewer now exposes a dedicated **Review** tab as the default landing tab on each branch. It lists album directories under `docs/review/`. To make this work, the source repo (`marvelousu/anemora`) follows these conventions:
+
+### Directory naming
+
+Each review cycle is its own timestamp directory under `docs/review/`:
+
+```
+docs/review/<YYYYMMDDHHMM>/
+  image-01.png
+  image-02.png
+  ...
+  devlog.txt        (optional)
+```
+
+Example: `docs/review/202605242351/`.
+
+### devlog.txt (optional)
+
+Plain text file. The first non-empty, non-comment line is treated as the path to the related devlog markdown. The viewer surfaces a "devlog" pill on the album header that opens the markdown on the Docs tab.
+
+```text
+# generated alongside the review images
+docs/devlog/2026-05-24_chapter1_session_intro.md
+```
+
+### Effect in the viewer
+
+- Each `docs/review/<cycle>/` becomes a card on the **Review** tab.
+- Review is the default tab when opening any branch.
+- If `devlog.txt` is present, the album detail page shows a clickable "devlog:" pill.
+- On the album detail page, **swiping left/right** (≥80 px horizontal, dominant over vertical) moves to the previous/next album in path order. The header also shows prev/next text links as fallback.
+- Pinning still works in the same way: tap ★ on a card to pin it (per device, localStorage), and pinned items show up in the **Home** tab alongside pinned docs.
+
+## 14. 残課題・将来拡張
 
 - 全文検索の全 branch 横断（現状は current branch のみ。Pagefind の multi-site index 機能を使えば実現可能）
 - 動画 (.mp4) 対応（Anemora が今後動画を持つようになったら検討）
