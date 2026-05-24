@@ -3,6 +3,7 @@ import PinButton, { readPins } from './PinButton';
 
 type Album = {
   path: string;
+  displayLabel?: string;
   imageCount: number;
   representativeThumb: string;
   lastModified: string;
@@ -42,7 +43,10 @@ function AlbumCard({ branchSlug, album }: { branchSlug: string; album: Album }) 
         />
       </div>
       <div className="flex-1 min-w-0">
-        <div className="font-mono text-sm truncate">{album.path}</div>
+        <div className="text-sm truncate">{album.displayLabel ?? album.path}</div>
+        {album.displayLabel && (
+          <div className="font-mono text-[10px] text-fg-subtle/70 truncate">{album.path}</div>
+        )}
         <div className="text-xs text-fg-subtle mt-1">
           {album.imageCount} images{album.lastModified ? ` · ${relativeTime(album.lastModified)}` : ''}
         </div>

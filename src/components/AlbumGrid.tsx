@@ -16,10 +16,17 @@ type Props = {
   nextHref?: string | null;
 };
 
+const SWIPE_TRIGGER = 80; // px to commit
+const HORIZONTAL_THRESHOLD = 20; // px before we decide "this is horizontal"
+const VERTICAL_ABORT = 12; // if vertical exceeds this before horizontal is detected, abort
+
 export default function AlbumGrid({ images, prevHref, nextHref }: Props) {
   const ref = useRef<HTMLDivElement | null>(null);
   const startX = useRef(0);
   const startY = useRef(0);
+  const isHorizontal = useRef(false);
+  const aborted = useRef(false);
+  const dx = useRef(0);
 
   useEffect(() => {
     if (!ref.current) return;
@@ -36,25 +43,59 @@ export default function AlbumGrid({ images, prevHref, nextHref }: Props) {
     };
   }, []);
 
-  function onTouchStart(e: React.TouchEvent) {
-    startX.current = e.touches[0].clientX;
-    startY.current = e.touches[0].clientY;
+  function reset() {
+    isHorizontal.current = false;
+    aborted.current = false;
+    dx.current = 0;
   }
 
-  function onTouchEnd(e: React.TouchEvent) {
-    const dx = e.changedTouches[0].clientX - startX.current;
-    const dy = e.changedTouches[0].clientY - startY.current;
-    // Horizontal swipe with at least 80px and dominant over vertical
-    if (Math.abs(dx) < 80 || Math.abs(dy) > Math.abs(dx)) return;
-    if (dx > 0 && prevHref) {
-      window.location.href = prevHref;
-    } else if (dx < 0 && nextHref) {
-      window.location.href = nextHref;
+  function onPointerDown(e: React.PointerEvent) {
+    if (e.pointerType !== 'touch') return;
+    startX.current = e.clientX;
+    startY.current = e.clientY;
+    reset();
+  }
+
+  function onPointerMove(e: React.PointerEvent) {
+    if (e.pointerType !== 'touch' || aborted.current) return;
+    const cdx = e.clientX - startX.current;
+    const cdy = e.clientY - startY.current;
+    if (!isHorizontal.current) {
+      if (Math.abs(cdy) > VERTICAL_ABORT) {
+        aborted.current = true;
+        return;
+      }
+      if (Math.abs(cdx) > HORIZONTAL_THRESHOLD && Math.abs(cdx) > Math.abs(cdy) * 1.5) {
+        isHorizontal.current = true;
+      }
+    }
+    dx.current = cdx;
+    if (isHorizontal.current) {
+      e.preventDefault();
     }
   }
 
+  function onPointerEnd(e: React.PointerEvent) {
+    if (e.pointerType !== 'touch') return;
+    const committed = isHorizontal.current && !aborted.current && Math.abs(dx.current) > SWIPE_TRIGGER;
+    if (committed) {
+      if (dx.current > 0 && prevHref) {
+        window.location.href = prevHref;
+      } else if (dx.current < 0 && nextHref) {
+        window.location.href = nextHref;
+      }
+    }
+    reset();
+  }
+
   return (
-    <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+    <div
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerEnd}
+      onPointerCancel={onPointerEnd}
+      style={{ touchAction: 'pan-y' }}
+    >
       {(prevHref || nextHref) && (
         <div className="flex items-center justify-between px-3 py-2 text-xs text-fg-subtle">
           <div>
@@ -67,7 +108,7 @@ export default function AlbumGrid({ images, prevHref, nextHref }: Props) {
               </a>
             ) : <span>&nbsp;</span>}
           </div>
-          <div>swipe ←/→</div>
+          <div className="opacity-60">swipe ←/→</div>
           <div>
             {nextHref ? (
               <a href={nextHref} className="no-underline inline-flex items-center gap-1">

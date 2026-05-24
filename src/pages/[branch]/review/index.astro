@@ -12,10 +12,23 @@ const branch = branchesData.branches.find((b) => b.slug === branchSlug);
 if (!branch) throw new Error(`Branch not found: ${branchSlug}`);
 
 const REVIEW_PREFIX = 'docs/review/';
+const ISO_RE = /^docs\/review\/(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})(?:[/].*)?$/;
+function reviewLabel(p: string): string {
+  // Match the cycle directory itself. If the path goes deeper (legacy YYYYMMDDHHMM or other), fall back to path.
+  const segs = p.split('/');
+  const cycleSeg = segs[2];
+  if (!cycleSeg) return p;
+  const m = cycleSeg.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})$/);
+  if (m) {
+    return `Cycle ${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]} (JST)`;
+  }
+  return cycleSeg;
+}
 const reviewAlbums = branch.albums
   .filter((a) => a.path.startsWith(REVIEW_PREFIX))
   .map((a) => ({
     path: a.path,
+    displayLabel: reviewLabel(a.path),
     imageCount: a.imageCount,
     representativeThumb: a.representativeThumb,
     lastModified: a.lastModified,
