@@ -36,10 +36,11 @@ export default function HomeCardList({ branches }: Props) {
   }
 
   return (
-    <ul className="px-3 py-2 space-y-3 safe-bottom">
+    <ul className="px-3 py-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 max-w-screen-xl mx-auto safe-bottom">
       {branches.map((b, i) => (
         <motion.li
           key={b.slug}
+          className="m-0"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2, delay: i * 0.05 }}

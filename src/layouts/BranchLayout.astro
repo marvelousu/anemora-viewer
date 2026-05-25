@@ -23,7 +23,7 @@ const branchSummaries = branchesData.branches.map((b) => ({ name: b.name, slug: 
     currentSlug={branchSlug}
     baseTab={tab}
   />
-  <div class="pb-16">
+  <div class="pb-16 max-w-screen-2xl mx-auto">
     <slot />
   </div>
   <TabBar client:load branchSlug={branchSlug} current={tab} />

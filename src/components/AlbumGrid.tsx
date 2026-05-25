@@ -53,6 +53,25 @@ export default function AlbumGrid({ images, prevHref, nextHref }: Props) {
     return () => window.removeEventListener('pageshow', onPageShow as EventListener);
   }, []);
 
+  // Desktop / keyboard navigation: left / right arrow keys move to the
+  // prev / next album. Skip when focus is inside an input or a textarea.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const t = e.target as Element | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || (t as HTMLElement).isContentEditable)) {
+        return;
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === 'ArrowLeft' && prevHref) {
+        window.location.href = prevHref;
+      } else if (e.key === 'ArrowRight' && nextHref) {
+        window.location.href = nextHref;
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [prevHref, nextHref]);
+
   useEffect(() => {
     const el = swipeRef.current;
     if (!el) return;
@@ -125,7 +144,7 @@ export default function AlbumGrid({ images, prevHref, nextHref }: Props) {
 
   return (
     <div ref={swipeRef} style={{ touchAction: 'pan-y' }} className="pb-16">
-      <div ref={galleryRef} className="grid grid-cols-3 gap-1 p-1">
+      <div ref={galleryRef} className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-1 p-1 max-w-screen-2xl mx-auto">
         {images.map((img) => {
           const w = img.width || 1024;
           const h = img.height || 1024;

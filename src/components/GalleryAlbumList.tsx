@@ -93,7 +93,7 @@ export default function GalleryAlbumList({ branchSlug, albums }: Props) {
   }, [albums, query, sort]);
 
   return (
-    <div className="px-2 pb-20">
+    <div className="px-2 pb-20 max-w-screen-xl mx-auto">
       <div className="px-1 mb-3">
         <input
           type="search"
@@ -108,7 +108,7 @@ export default function GalleryAlbumList({ branchSlug, albums }: Props) {
       {pinnedAlbums.length > 0 && query === '' && (
         <section className="mb-4">
           <h2 className="px-1 text-xs uppercase tracking-wider text-fg-subtle mb-1">Pinned</h2>
-          <ul className="space-y-2">
+          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {pinnedAlbums.map((a) => (
               <li key={`pin-${a.path}`}>
                 <AlbumCard branchSlug={branchSlug} album={a} />
@@ -138,7 +138,7 @@ export default function GalleryAlbumList({ branchSlug, albums }: Props) {
       {visibleAlbums.length === 0 ? (
         <p className="px-1 py-6 text-center text-xs text-fg-subtle">No albums match.</p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {visibleAlbums.map((a) => (
             <li key={a.path}>
               <AlbumCard branchSlug={branchSlug} album={a} />
