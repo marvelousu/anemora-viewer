@@ -23,6 +23,10 @@ const VERTICAL_ABORT = 30;
 export default function AlbumGrid({ images, prevHref, nextHref }: Props) {
   const galleryRef = useRef<HTMLDivElement | null>(null);
   const swipeRef = useRef<HTMLDivElement | null>(null);
+  // True while the PhotoSwipe lightbox is open. In that state PhotoSwipe owns
+  // arrow-key navigation (image-to-image inside the album), so the page-level
+  // album prev/next listener must stand down to avoid running both at once.
+  const lightboxOpenRef = useRef(false);
 
   useEffect(() => {
     if (!galleryRef.current) return;
@@ -32,6 +36,12 @@ export default function AlbumGrid({ images, prevHref, nextHref }: Props) {
       pswpModule: () => import('photoswipe'),
       bgOpacity: 0.95,
       showHideAnimationType: 'fade',
+    });
+    lightbox.on('beforeOpen', () => {
+      lightboxOpenRef.current = true;
+    });
+    lightbox.on('close', () => {
+      lightboxOpenRef.current = false;
     });
     lightbox.init();
     return () => {
@@ -57,6 +67,10 @@ export default function AlbumGrid({ images, prevHref, nextHref }: Props) {
   // prev / next album. Skip when focus is inside an input or a textarea.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      // When the PhotoSwipe lightbox is open it handles its own arrow keys
+      // (image-to-image). Stay out of its way so the user doesn't trigger
+      // a page navigation at the same time.
+      if (lightboxOpenRef.current) return;
       const t = e.target as Element | null;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || (t as HTMLElement).isContentEditable)) {
         return;
