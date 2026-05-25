@@ -120,7 +120,7 @@ export default function GalleryAlbumList({ branchSlug, albums }: Props) {
 
       <div className="flex items-center gap-2 mb-2 px-1">
         <span className="text-xs text-fg-subtle">Sort:</span>
-        {(['tree', 'updated', 'name'] as SortKey[]).map((s) => (
+        {(['updated', 'tree', 'name'] as SortKey[]).map((s) => (
           <button
             type="button"
             key={s}
