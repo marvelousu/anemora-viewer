@@ -58,7 +58,7 @@ function AlbumCard({ branchSlug, album }: { branchSlug: string; album: Album }) 
 
 export default function GalleryAlbumList({ branchSlug, albums }: Props) {
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<SortKey>('tree');
+  const [sort, setSort] = useState<SortKey>('updated');
   const [pinVersion, setPinVersion] = useState(0);
 
   useEffect(() => {

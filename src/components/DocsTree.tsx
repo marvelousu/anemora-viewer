@@ -104,7 +104,7 @@ function TreeNodeView({
 }
 
 export default function DocsTree({ branchSlug, docs }: Props) {
-  const [sort, setSort] = useState<SortKey>('tree');
+  const [sort, setSort] = useState<SortKey>('updated');
   const [pinVersion, setPinVersion] = useState(0);
 
   useEffect(() => {
