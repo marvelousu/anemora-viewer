@@ -27,6 +27,8 @@ const { title = 'Viewer', description = 'Mobile viewer' } = Astro.props;
     <link rel="manifest" href="/manifest.webmanifest" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="googlebot" content="noindex, nofollow" />
     <script is:inline>
       // Apply theme before paint to avoid FOUC
       (function () {
