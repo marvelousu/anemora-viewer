@@ -13,6 +13,9 @@ content/
 public/thumbs/
 public/originals/
 
+# Generated viewer data model (rebuilt by `npm run build` via collect-content.mjs)
+src/data/branches.json
+
 # Env / secrets
 .env
 .env.local
