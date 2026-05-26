@@ -1,0 +1,30 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import branchesData from '@/data/branches.json';
+import TopBar from '@/components/TopBar';
+import TabBar from '@/components/TabBar';
+import type { TabKey } from '@/components/TabBar';
+
+type Props = {
+  title?: string;
+  branchSlug: string;
+  tab: TabKey;
+};
+
+const { title, branchSlug, tab } = Astro.props;
+
+const branchSummaries = branchesData.branches.map((b) => ({ name: b.name, slug: b.slug }));
+---
+
+<BaseLayout title={title}>
+  <TopBar
+    client:load
+    branches={branchSummaries}
+    currentSlug={branchSlug}
+    baseTab={tab}
+  />
+  <div class="pb-16 max-w-screen-2xl mx-auto">
+    <slot />
+  </div>
+  <TabBar client:load branchSlug={branchSlug} current={tab} />
+</BaseLayout>

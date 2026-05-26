@@ -1,0 +1,74 @@
+---
+import BranchLayout from '@/layouts/BranchLayout.astro';
+import branchesData from '@/data/branches.json';
+import PinButton from '@/components/PinButton';
+import DocsTree from '@/components/DocsTree';
+import { renderMarkdown } from '@/lib/markdown';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
+export async function getStaticPaths() {
+  const out: Array<{
+    params: { branch: string; slug: string };
+    props: { docPath: string; branchName: string };
+  }> = [];
+  for (const b of branchesData.branches) {
+    for (const d of b.docs) {
+      const slug = d.path.replace(/\.md$/, '');
+      out.push({
+        params: { branch: b.slug, slug },
+        props: { docPath: d.path, branchName: b.name },
+      });
+    }
+  }
+  return out;
+}
+
+const { branch: branchSlug } = Astro.params;
+const { docPath, branchName } = Astro.props;
+
+const branch = branchesData.branches.find((b) => b.slug === branchSlug);
+const docs = (branch?.docs ?? []).map((d) => ({
+  path: d.path,
+  filename: d.filename,
+  category: d.category,
+  lastModified: d.lastModified,
+}));
+
+const fullPath = path.resolve(`content/branches/${branchSlug}/${docPath}`);
+const src = readFileSync(fullPath, 'utf8');
+const html = await renderMarkdown(src);
+
+const segments = docPath.split('/');
+---
+
+<BranchLayout title={`${docPath} — Docs`} branchSlug={branchSlug!} tab="docs">
+  <div class="lg:flex lg:gap-6">
+    <aside class="hidden lg:block lg:w-72 lg:shrink-0 lg:sticky lg:top-12 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:border-r lg:border-border">
+      <DocsTree client:load branchSlug={branchSlug!} docs={docs} />
+    </aside>
+    <main class="min-h-dvh lg:flex-1 lg:min-w-0">
+      <header class="px-4 pt-3 pb-2 border-b border-border">
+        <a href={`/${branchSlug}/docs`} class="text-xs text-fg-subtle no-underline inline-flex items-center gap-1 lg:hidden">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          Docs
+        </a>
+        <div class="text-xs text-fg-subtle mt-1 font-mono break-all">
+          {segments.map((seg, i) => (
+            <>
+              {i > 0 && <span class="text-fg-subtle/50"> / </span>}
+              <span class={i === segments.length - 1 ? 'text-fg' : ''}>{seg}</span>
+            </>
+          ))}
+        </div>
+        <div class="mt-2 flex items-center gap-2">
+          <PinButton client:load branchSlug={branchSlug!} itemKey={docPath} kind="doc" />
+          <span class="text-xs text-fg-subtle">Pin this page</span>
+        </div>
+      </header>
+      <article class="prose dark:prose-invert max-w-none px-4 py-4 prose-pre:overflow-x-auto prose-img:rounded lg:max-w-3xl" set:html={html} />
+    </main>
+  </div>
+</BranchLayout>

@@ -1,0 +1,34 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Astro
+.astro/
+dist/
+
+# Build-time content (Anemora を取り込んだ作業ディレクトリ)
+content/
+public/thumbs/
+public/originals/
+
+# Generated viewer data model (rebuilt by `npm run build` via collect-content.mjs)
+src/data/branches.json
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log

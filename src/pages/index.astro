@@ -1,0 +1,27 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import branchesData from '@/data/branches.json';
+import HomeCardList from '@/components/HomeCardList.tsx';
+
+// Pass only the summary fields needed for the Home cards.
+// The full data (albums + docs + images) is consumed by per-branch pages.
+const branches = (branchesData.branches ?? []).map((b) => ({
+  name: b.name,
+  slug: b.slug,
+  lastCommit: b.lastCommit,
+  touchedRecent7d: b.touchedRecent7d,
+  representativeImage: b.representativeImage,
+}));
+---
+
+<BaseLayout title="Viewer">
+  <main class="min-h-dvh">
+    <header class="safe-top px-4 pt-4 pb-2">
+      <h1 class="text-xl font-semibold">Branches</h1>
+      <p class="text-sm text-fg-subtle mt-1">
+        {branches.length} active {branches.length === 1 ? 'branch' : 'branches'}
+      </p>
+    </header>
+    <HomeCardList client:load branches={branches} />
+  </main>
+</BaseLayout>
