@@ -59,7 +59,7 @@ export default function PinnedItemsView({ branchSlug, albums, docs }: Props) {
           <h2 className="px-1 text-xs uppercase tracking-wider text-fg-subtle mb-2">
             Albums ({pinnedAlbums.length})
           </h2>
-          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 [&>*]:min-w-0">
             {pinnedAlbums.map((a) => (
               <li key={`a-${a.path}`}>
                 <a

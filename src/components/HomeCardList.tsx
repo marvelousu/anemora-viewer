@@ -36,7 +36,7 @@ export default function HomeCardList({ branches }: Props) {
   }
 
   return (
-    <ul className="px-3 py-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 max-w-screen-xl mx-auto safe-bottom">
+    <ul className="px-3 py-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 max-w-screen-xl mx-auto safe-bottom [&>*]:min-w-0">
       {branches.map((b, i) => (
         <motion.li
           key={b.slug}

@@ -108,7 +108,7 @@ export default function GalleryAlbumList({ branchSlug, albums }: Props) {
       {pinnedAlbums.length > 0 && query === '' && (
         <section className="mb-4">
           <h2 className="px-1 text-xs uppercase tracking-wider text-fg-subtle mb-1">Pinned</h2>
-          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 [&>*]:min-w-0">
             {pinnedAlbums.map((a) => (
               <li key={`pin-${a.path}`}>
                 <AlbumCard branchSlug={branchSlug} album={a} />
