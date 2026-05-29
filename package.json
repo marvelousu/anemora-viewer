@@ -6,7 +6,7 @@
   "description": "Mobile viewer (PWA) for the Anemora project",
   "scripts": {
     "dev": "astro dev",
-    "build": "node scripts/setup-content.mjs && node scripts/generate-icons.mjs && astro build && pagefind --site dist --output-subdir pagefind",
+    "build": "node scripts/setup-content.mjs && node scripts/setup-r2-images.mjs && node scripts/generate-icons.mjs && astro build && pagefind --site dist --output-subdir pagefind",
     "build:fast": "astro build",
     "preview": "astro preview",
     "astro": "astro",
