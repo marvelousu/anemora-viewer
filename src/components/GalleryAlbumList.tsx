@@ -138,7 +138,7 @@ export default function GalleryAlbumList({ branchSlug, albums }: Props) {
       {visibleAlbums.length === 0 ? (
         <p className="px-1 py-6 text-center text-xs text-fg-subtle">No albums match.</p>
       ) : (
-        <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 [&>*]:min-w-0">
           {visibleAlbums.map((a) => (
             <li key={a.path}>
               <AlbumCard branchSlug={branchSlug} album={a} />
