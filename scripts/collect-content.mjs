@@ -104,6 +104,15 @@ function gitTouchedRecent7d(branchName) {
   }
 }
 
+// Review/devlog images live under docs/review/<YYYY-MM-DDTHH-MM>[suffix]/... (and
+// docs/devlog/screenshots/<...>). They are fetched from R2 with no git history, so
+// their file mtime is the volatile build time. Use the cycle timestamp from the path
+// as lastModified instead, so albums sort by capture time and the newest cycle wins.
+function cycleTimestamp(rel) {
+  const m = rel.match(/^docs\/(?:review|devlog\/screenshots)\/(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})/);
+  return m ? `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:00Z` : null;
+}
+
 async function asyncPool(concurrency, items, fn) {
   const results = new Array(items.length);
   let cursor = 0;
@@ -160,7 +169,7 @@ async function processImage(branch, file) {
     width,
     height,
     sizeBytes: st.size,
-    lastModified: gitLastModified(branch.name, file.rel) ?? st.mtime.toISOString(),
+    lastModified: cycleTimestamp(file.rel) ?? gitLastModified(branch.name, file.rel) ?? st.mtime.toISOString(),
   };
 }
 
@@ -252,12 +261,16 @@ async function processBranch(branch) {
     })
     .sort((a, b) => a.path.localeCompare(b.path));
 
-  // Representative image = most recently modified
-  const sortedByDate = images
-    .filter((i) => i.lastModified)
-    .slice()
-    .sort((a, b) => (a.lastModified < b.lastModified ? 1 : -1));
-  const representativeImage = sortedByDate[0]?.thumbUrl ?? null;
+  // Representative image = newest review-cycle image if any, else newest overall.
+  // Review screenshots are the "what changed" content tracked across builds; isolated
+  // art sprites (e.g. a character transition frame) make poor branch-card thumbnails.
+  const byDateDesc = (arr) =>
+    arr.filter((i) => i.lastModified).slice().sort((a, b) =>
+      a.lastModified !== b.lastModified
+        ? (a.lastModified < b.lastModified ? 1 : -1)
+        : a.filename.localeCompare(b.filename));
+  const reviewImgs = images.filter((i) => i.directory && i.directory.startsWith('docs/review/'));
+  const representativeImage = byDateDesc(reviewImgs.length ? reviewImgs : images)[0]?.thumbUrl ?? null;
 
   const touchedRecent7d = gitTouchedRecent7d(branch.name);
 
