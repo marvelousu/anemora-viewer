@@ -108,9 +108,12 @@ function gitTouchedRecent7d(branchName) {
 // docs/devlog/screenshots/<...>). They are fetched from R2 with no git history, so
 // their file mtime is the volatile build time. Use the cycle timestamp from the path
 // as lastModified instead, so albums sort by capture time and the newest cycle wins.
+// The cycle directory time is JST (the loop's wall clock; the viewer labels it "(JST)"),
+// so tag +09:00 — tagging it Z put each cycle ~9h in the future, which made relativeTime
+// report a negative age ("just now") for the newest cycle for hours after capture.
 function cycleTimestamp(rel) {
   const m = rel.match(/^docs\/(?:review|devlog\/screenshots)\/(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})/);
-  return m ? `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:00Z` : null;
+  return m ? `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:00+09:00` : null;
 }
 
 async function asyncPool(concurrency, items, fn) {
