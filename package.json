@@ -8,12 +8,15 @@
     "dev": "astro dev",
     "build": "node scripts/setup-content.mjs && node scripts/setup-r2-images.mjs && node scripts/collect-content.mjs && node scripts/generate-icons.mjs && astro build && pagefind --site dist --output-subdir pagefind",
     "build:fast": "astro build",
-    "preview": "astro preview",
+    "preview": "npm run build && wrangler dev",
     "astro": "astro",
-    "check": "astro check"
+    "check": "astro check",
+    "deploy": "npm run build && wrangler deploy",
+    "cf-typegen": "wrangler types"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.4",
+    "@astrojs/cloudflare": "12",
     "@astrojs/react": "^4.2.0",
     "@astrojs/tailwind": "^5.1.4",
     "@tailwindcss/typography": "^0.5.19",
@@ -34,6 +37,7 @@
   "devDependencies": {
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
-    "pagefind": "^1.2.0"
+    "pagefind": "^1.2.0",
+    "wrangler": "^4.95.0"
   }
 }
