@@ -61,7 +61,7 @@ for (const b of idx.branches ?? []) {
 
   let paths;
   try {
-    const res = await fetch(`${base}/manifests/${encodeURIComponent(b.slug)}.json`);
+    const res = await fetch(`${base}/manifests/${encodeURIComponent(b.slug)}.json?cb=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) { console.log(`[setup-r2-images] no manifest for ${b.slug} (HTTP ${res.status}); skip`); continue; }
     paths = await res.json();
   } catch (e) {
@@ -77,7 +77,7 @@ for (const b of idx.branches ?? []) {
     const dest = path.join(branchRoot, rel);
     if (!path.resolve(dest).startsWith(branchRoot + path.sep)) return; // defence in depth
     try {
-      const r = await fetch(url);
+      const r = await fetch(`${url}${url.includes('?') ? '&' : '?'}cb=${Date.now()}`, { cache: 'no-store' });
       if (!r.ok) { console.warn(`[setup-r2-images] HTTP ${r.status} ${url}`); return; }
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.writeFileSync(dest, Buffer.from(await r.arrayBuffer()));
