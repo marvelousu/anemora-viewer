@@ -16,10 +16,10 @@ type Props = {
 
 type SortKey = 'tree' | 'updated' | 'name';
 
-function relativeTime(iso: string): string {
+function relativeTime(iso: string, now: number): string {
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return '';
-  const diffSec = Math.floor((Date.now() - then) / 1000);
+  const diffSec = Math.floor((now - then) / 1000);
   if (diffSec < 60) return 'just now';
   if (diffSec < 3600) return `${Math.floor(diffSec / 60)} min ago`;
   if (diffSec < 86400) return `${Math.floor(diffSec / 3600)} h ago`;
@@ -27,7 +27,8 @@ function relativeTime(iso: string): string {
   return new Date(iso).toISOString().slice(0, 10);
 }
 
-function AlbumCard({ branchSlug, album }: { branchSlug: string; album: Album }) {
+function AlbumCard({ branchSlug, album, now }: { branchSlug: string; album: Album; now: number | null }) {
+  const age = album.lastModified && now ? relativeTime(album.lastModified, now) : '';
   return (
     <a
       href={`/${branchSlug}/gallery/${album.path}`}
@@ -48,7 +49,7 @@ function AlbumCard({ branchSlug, album }: { branchSlug: string; album: Album }) 
           <div className="font-mono text-[10px] text-fg-subtle/70 truncate">{album.path}</div>
         )}
         <div className="text-xs text-fg-subtle mt-1">
-          {album.imageCount} images{album.lastModified ? ` · ${relativeTime(album.lastModified)}` : ''}
+          {album.imageCount} images{age ? ` · ${age}` : ''}
         </div>
       </div>
       <PinButton branchSlug={branchSlug} itemKey={album.path} kind="album" size="sm" />
@@ -60,14 +61,20 @@ export default function GalleryAlbumList({ branchSlug, albums }: Props) {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortKey>('updated');
   const [pinVersion, setPinVersion] = useState(0);
+  const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
+    setNow(Date.now());
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
     function onPin(e: Event) {
       const detail = (e as CustomEvent).detail;
       if (detail?.kind === 'album') setPinVersion((v) => v + 1);
     }
     window.addEventListener('viewer:pin-change', onPin as EventListener);
-    return () => window.removeEventListener('viewer:pin-change', onPin as EventListener);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('viewer:pin-change', onPin as EventListener);
+    };
   }, []);
 
   const pinnedAlbums = useMemo(() => {
@@ -111,7 +118,7 @@ export default function GalleryAlbumList({ branchSlug, albums }: Props) {
           <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 [&>*]:min-w-0">
             {pinnedAlbums.map((a) => (
               <li key={`pin-${a.path}`}>
-                <AlbumCard branchSlug={branchSlug} album={a} />
+                <AlbumCard branchSlug={branchSlug} album={a} now={now} />
               </li>
             ))}
           </ul>
@@ -141,7 +148,7 @@ export default function GalleryAlbumList({ branchSlug, albums }: Props) {
         <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 [&>*]:min-w-0">
           {visibleAlbums.map((a) => (
             <li key={a.path}>
-              <AlbumCard branchSlug={branchSlug} album={a} />
+              <AlbumCard branchSlug={branchSlug} album={a} now={now} />
             </li>
           ))}
         </ul>
