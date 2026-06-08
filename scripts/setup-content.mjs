@@ -11,7 +11,7 @@
 //      fragility of `git sparse-checkout` over `--shared` clones with refs
 //      that aren't fetched.
 //   4. Write content/branches/index.json with branch metadata.
-//   5. Chain to scripts/collect-content.mjs (Step 3) if present.
+//   5. The npm build script runs setup-r2-images.mjs, then collect-content.mjs.
 //
 // Designed to run on both local dev and Cloudflare Pages build.
 // The source repo (marvelousu/anemora) is public, so no auth is required.
@@ -156,13 +156,7 @@ function main() {
   writeFileSync(path.join(BRANCHES_DIR, 'index.json'), JSON.stringify(indexJson, null, 2));
   console.log(`[setup-content] wrote content/branches/index.json`);
 
-  const collectScript = path.join(REPO_ROOT, 'scripts', 'collect-content.mjs');
-  if (existsSync(collectScript)) {
-    console.log(`[setup-content] -> collect-content.mjs`);
-    shStream(`node "${collectScript}"`);
-  } else {
-    console.log('[setup-content] collect-content.mjs not present yet (Step 3 pending).');
-  }
+  console.log('[setup-content] done; npm build continues with setup-r2-images.mjs');
 }
 
 try {
