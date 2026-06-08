@@ -41,7 +41,9 @@ const encPath = (p) => p.split('/').map(encodeURIComponent).join('/');
 // A relative path is safe only if it stays under docs/ with no traversal.
 const safeRel = (p) =>
   typeof p === 'string' &&
-  (p.startsWith('docs/review/') || p.startsWith('docs/devlog/screenshots/')) &&
+  (p.startsWith('docs/review/') ||
+    p.startsWith('docs/devlog/screenshots/') ||
+    /^docs\/devlog\/[^/]+\.md$/.test(p)) &&
   !p.split('/').some((seg) => seg === '..' || seg === '' || seg === '.');
 
 async function pool(items, n, worker) {

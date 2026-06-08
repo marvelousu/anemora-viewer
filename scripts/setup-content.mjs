@@ -16,7 +16,7 @@
 // Designed to run on both local dev and Cloudflare Pages build.
 // The source repo (marvelousu/anemora) is public, so no auth is required.
 
-import { execSync, spawnSync } from 'node:child_process';
+import { execFileSync, execSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -40,9 +40,13 @@ function sh(cmd) {
   return execSync(cmd, { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' }).trim();
 }
 
-function shStream(cmd) {
-  const r = spawnSync('bash', ['-lc', cmd], { stdio: 'inherit' });
-  if (r.status !== 0) throw new Error(`Command failed (exit ${r.status}): ${cmd}`);
+function gitOutput(args) {
+  return execFileSync('git', args, { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' }).trim();
+}
+
+function run(command, args) {
+  const r = spawnSync(command, args, { stdio: 'inherit' });
+  if (r.status !== 0) throw new Error(`Command failed (exit ${r.status}): ${command} ${args.join(' ')}`);
 }
 
 function ensureCleanDir(dir) {
@@ -62,19 +66,17 @@ function fetchSourceRepo() {
   if (!existsSync(RAW_DIR)) {
     mkdirSync(path.dirname(RAW_DIR), { recursive: true });
     console.log(`[setup-content] cloning ${SOURCE_REPO}`);
-    shStream(`git clone --no-checkout --filter=blob:none "${SOURCE_REPO}" "${RAW_DIR}"`);
+    run('git', ['clone', '--no-checkout', '--filter=blob:none', SOURCE_REPO, RAW_DIR]);
   } else {
     console.log(`[setup-content] refreshing existing clone`);
-    shStream(`git -C "${RAW_DIR}" fetch --prune origin`);
+    run('git', ['-C', RAW_DIR, 'fetch', '--prune', 'origin']);
   }
 }
 
 function listActiveWorkBranches() {
   const sep = String.fromCharCode(0x1f);
   const fmt = `%(refname:short)${sep}%(committerdate:unix)${sep}%(objectname:short)${sep}%(contents:subject)`;
-  const raw = sh(
-    `git -C "${RAW_DIR}" for-each-ref --format='${fmt}' refs/remotes/origin/work`
-  );
+  const raw = gitOutput(['-C', RAW_DIR, 'for-each-ref', `--format=${fmt}`, 'refs/remotes/origin/work']);
   const now = Math.floor(Date.now() / 1000);
   const cutoff = now - ACTIVE_DAYS * 86400;
   const branches = [];
@@ -112,13 +114,21 @@ function checkoutBranch(branch) {
   // Filter to paths that exist at this commit; archive errors otherwise.
   const presentDirs = TARGET_DIRS.filter((p) => pathExistsAt(branch.sha, p));
   // Globs (like *.md) don't fit cat-file checks; pass them through unconditionally.
-  const pathspec = [
-    ...presentDirs.map((p) => `'${p}'`),
-    ...TARGET_GLOBS.map((g) => `':(glob)${g}'`),
-  ].join(' ');
-  shStream(
-    `git -C "${RAW_DIR}" archive --format=tar "${branch.sha}" -- ${pathspec} | tar -x -C "${dest}"`
-  );
+  const archivePath = path.join(BRANCHES_DIR, `${branch.slug}.tar`);
+  if (existsSync(archivePath)) rmSync(archivePath, { force: true });
+  run('git', [
+    '-C',
+    RAW_DIR,
+    'archive',
+    `--output=${archivePath}`,
+    '--format=tar',
+    branch.sha,
+    '--',
+    ...presentDirs,
+    ...TARGET_GLOBS.map((g) => `:(glob)${g}`),
+  ]);
+  run('tar', ['-xf', archivePath, '-C', dest]);
+  rmSync(archivePath, { force: true });
 }
 
 function main() {
