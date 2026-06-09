@@ -15,13 +15,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const BASE = process.env.PUBLIC_R2_BASE;
+const DEFAULT_PUBLIC_R2_BASE = 'https://pub-d14764d639a647339a6b0d81de923abf.r2.dev';
+const BASE = process.env.PUBLIC_R2_BASE || DEFAULT_PUBLIC_R2_BASE;
 const INDEX = 'content/branches/index.json';
 const CONCURRENCY = 24;
 
-if (!BASE) {
-  console.warn('[setup-r2-images] PUBLIC_R2_BASE not set; skipping R2 image fetch');
-  process.exit(0);
+if (!process.env.PUBLIC_R2_BASE) {
+  console.warn(`[setup-r2-images] PUBLIC_R2_BASE not set; using default ${DEFAULT_PUBLIC_R2_BASE}`);
 }
 if (!fs.existsSync(INDEX)) {
   console.warn('[setup-r2-images] content/branches/index.json missing; run setup-content.mjs first');
