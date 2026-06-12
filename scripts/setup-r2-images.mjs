@@ -19,6 +19,7 @@ const DEFAULT_PUBLIC_R2_BASE = 'https://pub-d14764d639a647339a6b0d81de923abf.r2.
 const BASE = process.env.PUBLIC_R2_BASE || DEFAULT_PUBLIC_R2_BASE;
 const INDEX = 'content/branches/index.json';
 const CONCURRENCY = 24;
+const FETCH_TIMEOUT_MS = Number(process.env.R2_FETCH_TIMEOUT_MS || 15000);
 
 if (!process.env.PUBLIC_R2_BASE) {
   console.warn(`[setup-r2-images] PUBLIC_R2_BASE not set; using default ${DEFAULT_PUBLIC_R2_BASE}`);
@@ -38,6 +39,10 @@ try {
 
 const base = BASE.replace(/\/+$/, '');
 const encPath = (p) => p.split('/').map(encodeURIComponent).join('/');
+const timeoutSignal = () =>
+  typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+    ? AbortSignal.timeout(FETCH_TIMEOUT_MS)
+    : undefined;
 // A relative path is safe only if it stays under docs/ with no traversal.
 const safeRel = (p) =>
   typeof p === 'string' &&
@@ -63,7 +68,10 @@ for (const b of idx.branches ?? []) {
 
   let paths;
   try {
-    const res = await fetch(`${base}/manifests/${encodeURIComponent(b.slug)}.json?cb=${Date.now()}`, { cache: 'no-store' });
+    const res = await fetch(`${base}/manifests/${encodeURIComponent(b.slug)}.json?cb=${Date.now()}`, {
+      cache: 'no-store',
+      signal: timeoutSignal(),
+    });
     if (!res.ok) { console.log(`[setup-r2-images] no manifest for ${b.slug} (HTTP ${res.status}); skip`); continue; }
     paths = await res.json();
   } catch (e) {
@@ -79,7 +87,10 @@ for (const b of idx.branches ?? []) {
     const dest = path.join(branchRoot, rel);
     if (!path.resolve(dest).startsWith(branchRoot + path.sep)) return; // defence in depth
     try {
-      const r = await fetch(`${url}${url.includes('?') ? '&' : '?'}cb=${Date.now()}`, { cache: 'no-store' });
+      const r = await fetch(`${url}${url.includes('?') ? '&' : '?'}cb=${Date.now()}`, {
+        cache: 'no-store',
+        signal: timeoutSignal(),
+      });
       if (!r.ok) { console.warn(`[setup-r2-images] HTTP ${r.status} ${url}`); return; }
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.writeFileSync(dest, Buffer.from(await r.arrayBuffer()));
