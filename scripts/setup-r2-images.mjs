@@ -65,6 +65,11 @@ const safeRel = (p) =>
     p.startsWith('docs/devlog/screenshots/') ||
     /^docs\/devlog\/[^/]+\.md$/.test(p)) &&
   !p.split('/').some((seg) => seg === '..' || seg === '' || seg === '.');
+const fetchPriority = (p) => {
+  if (/^docs\/devlog\/[^/]+\.md$/.test(p)) return 0;
+  if (p.startsWith('docs/review/')) return 1;
+  return 2;
+};
 
 async function pool(items, n, worker) {
   let i = 0;
@@ -94,7 +99,9 @@ for (const b of idx.branches ?? []) {
 
   const branchRoot = path.resolve('content', 'branches', b.slug);
   let got = 0;
-  const pathsToFetch = paths.filter(safeRel).sort().reverse();
+  const pathsToFetch = paths
+    .filter(safeRel)
+    .sort((a, b) => fetchPriority(a) - fetchPriority(b) || b.localeCompare(a));
   await pool(pathsToFetch, CONCURRENCY, async (rel) => {
     const url = `${base}/tree/${encodeURIComponent(b.slug)}/${encPath(rel)}`;
     const dest = path.join(branchRoot, rel);
