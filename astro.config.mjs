@@ -5,9 +5,12 @@ import AstroPWA from '@vite-pwa/astro';
 import remarkGfm from 'remark-gfm';
 import remarkWikiLink from 'remark-wiki-link';
 
+import cloudflare from "@astrojs/cloudflare";
+
 export default defineConfig({
   site: 'https://anemora-viewer.pages.dev',
   trailingSlash: 'never',
+
   integrations: [
     react(),
     tailwind({ applyBaseStyles: false }),
@@ -64,6 +67,7 @@ export default defineConfig({
       },
     }),
   ],
+
   markdown: {
     remarkPlugins: [
       remarkGfm,
@@ -71,6 +75,7 @@ export default defineConfig({
     ],
     shikiConfig: { themes: { light: 'github-light', dark: 'github-dark' } },
   },
+
   vite: {
     server: { fs: { allow: ['..'] } },
     build: {
@@ -81,4 +86,6 @@ export default defineConfig({
       },
     },
   },
+
+  adapter: cloudflare()
 });
