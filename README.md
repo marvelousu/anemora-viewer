@@ -13,7 +13,7 @@ iPhone / PC 向けの閲覧専用 PWA。Unity HD-2D 探索アドベンチャー 
 - **Home タブ**: Pin した album と doc を集約
 - **Gallery タブ**: ディレクトリ単位のアルバムを 3-10 列グリッドで表示 + PhotoSwipe 全画面ズーム
 - **Docs タブ**: Markdown ドキュメントを Pagefind 全文検索つきで閲覧、`★ Pin` で記憶
-- **branch dropdown** で複数 work / wip branch を切り替え、`work/*` / `wip/*` かつ 30 日以内 commit のものを自動取得
+- **branch dropdown** で work / wip branch を切り替え、`work/*` / `wip/*` かつ 30 日以内 commit の最新 branch を自動取得
 - **iPhone 横スワイプ** で前後の album に移動 / **PC は ← / → キー**
 - **テーマ切替** (sun/moon)、PWA 化 (ホーム画面追加で full-screen)
 
@@ -34,7 +34,7 @@ npm run dev      # ローカル開発サーバ
 npm run build    # 本番ビルド (collect-content.mjs が src/data/branches.json と public/thumbs/, public/originals/ を生成)
 ```
 
-`npm run build` は `marvelousu/anemora` を `content/` に clone し、`work/*` / `wip/*` branch から画像と md を抽出してサムネを生成します。詳細は [SPEC.md](./SPEC.md) §5.1。
+`npm run build` は `marvelousu/anemora` を `content/` に clone し、`work/*` / `wip/*` branch から画像と md を抽出してサムネを生成します。既定では build size を抑えるため prefix ごとの最新 1 branch を対象にします。詳細は [SPEC.md](./SPEC.md) §5.1。
 
 ## デプロイ
 

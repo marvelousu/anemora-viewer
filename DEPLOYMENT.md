@@ -90,6 +90,6 @@ Cloudflare Pages keeps the last N deployments. From **Deployments**, pick any pr
 ## 6. Limits / notes
 
 - **Cloudflare Pages free tier**: 500 builds/month, 25 GB total storage, unlimited bandwidth. Each Anemora push triggers one build.
-- **Build duration**: 5-10 min. Hard timeout is 20 min on free tier; if approaching, reduce `originals/` size (e.g., generate webp originals via sharp instead of copying raw PNG — see SPEC §5.1 future tweaks).
+- **Build duration**: 5-10 min. Hard timeout is 20 min on free tier; the default build tracks the latest branch per prefix (`MAX_BRANCHES_PER_PREFIX=1`) to keep review propagation inside that limit. If approaching the timeout, reduce `originals/` size (e.g., generate webp originals via sharp instead of copying raw PNG — see SPEC §5.1 future tweaks).
 - **PWA Service Worker cache**: precache only ~420 KB. Pages and images are cached at runtime (NetworkFirst / StaleWhileRevalidate) so the iOS ~50 MB SW limit is never hit.
 - **Pagefind search**: build script runs `pagefind --site dist --bundle-dir pagefind` to generate a site-wide search index. The Docs page wiring of Pagefind UI is a future task (see SPEC).

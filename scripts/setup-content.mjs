@@ -32,6 +32,7 @@ const BRANCH_PREFIXES = (process.env.BRANCH_PREFIXES ?? 'work,wip')
   .split(',')
   .map((s) => s.trim().replace(/^\/+|\/+$/g, ''))
   .filter(Boolean);
+const MAX_BRANCHES_PER_PREFIX = Number(process.env.MAX_BRANCHES_PER_PREFIX ?? 1);
 const RAW_DIR = path.join(REPO_ROOT, 'content', 'anemora-raw');
 const BRANCHES_DIR = path.join(REPO_ROOT, 'content', 'branches');
 
@@ -106,6 +107,16 @@ function listActiveBranches() {
     });
   }
   branches.sort((a, b) => b.dateUnix - a.dateUnix);
+  if (MAX_BRANCHES_PER_PREFIX > 0) {
+    const counts = new Map();
+    return branches.filter((branch) => {
+      const prefix = allowedPrefixes.find((p) => branch.name.startsWith(p)) ?? '';
+      const count = counts.get(prefix) ?? 0;
+      if (count >= MAX_BRANCHES_PER_PREFIX) return false;
+      counts.set(prefix, count + 1);
+      return true;
+    });
+  }
   return branches;
 }
 
@@ -144,6 +155,7 @@ function checkoutBranch(branch) {
 function main() {
   console.log(`[setup-content] ACTIVE_DAYS=${ACTIVE_DAYS}`);
   console.log(`[setup-content] BRANCH_PREFIXES=${BRANCH_PREFIXES.join(',')}`);
+  console.log(`[setup-content] MAX_BRANCHES_PER_PREFIX=${MAX_BRANCHES_PER_PREFIX}`);
 
   if (existsSync(BRANCHES_DIR)) rmSync(BRANCHES_DIR, { recursive: true, force: true });
   mkdirSync(BRANCHES_DIR, { recursive: true });
