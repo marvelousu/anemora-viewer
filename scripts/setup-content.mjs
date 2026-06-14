@@ -5,7 +5,8 @@
 //   1. Clone (or refresh) the source repo into content/anemora-raw
 //      (--filter=blob:none keeps the clone small; blobs are lazily fetched
 //      when git archive needs them).
-//   2. Enumerate origin/work/* branches whose tip commit is within ACTIVE_DAYS.
+//   2. Enumerate origin/work/* and origin/wip/* branches whose tip commit is
+//      within ACTIVE_DAYS.
 //   3. For each active branch, extract the needed paths into
 //      content/branches/<slug>/ via `git archive | tar -x`. This avoids the
 //      fragility of `git sparse-checkout` over `--shared` clones with refs
@@ -16,7 +17,7 @@
 // Designed to run on both local dev and Cloudflare Pages build.
 // The source repo (marvelousu/anemora) is public, so no auth is required.
 
-import { execFileSync, execSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,6 +28,10 @@ const REPO_ROOT = path.resolve(__dirname, '..');
 
 const SOURCE_REPO = process.env.ANEMORA_REPO_URL ?? 'https://github.com/marvelousu/anemora.git';
 const ACTIVE_DAYS = Number(process.env.ACTIVE_DAYS ?? 30);
+const BRANCH_PREFIXES = (process.env.BRANCH_PREFIXES ?? 'work,wip')
+  .split(',')
+  .map((s) => s.trim().replace(/^\/+|\/+$/g, ''))
+  .filter(Boolean);
 const RAW_DIR = path.join(REPO_ROOT, 'content', 'anemora-raw');
 const BRANCHES_DIR = path.join(REPO_ROOT, 'content', 'branches');
 
@@ -35,10 +40,6 @@ const BRANCHES_DIR = path.join(REPO_ROOT, 'content', 'branches');
 // AUTHORS.md / CHANGELOG.md etc.).
 const TARGET_DIRS = ['docs', 'Assets/Art', 'Assets/UI'];
 const TARGET_GLOBS = ['*.md'];
-
-function sh(cmd) {
-  return execSync(cmd, { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' }).trim();
-}
 
 function gitOutput(args) {
   return execFileSync('git', args, { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' }).trim();
@@ -73,10 +74,19 @@ function fetchSourceRepo() {
   }
 }
 
-function listActiveWorkBranches() {
+function listRefsForPrefix(prefix, format) {
+  try {
+    return gitOutput(['-C', RAW_DIR, 'for-each-ref', `--format=${format}`, `refs/remotes/origin/${prefix}`]);
+  } catch {
+    return '';
+  }
+}
+
+function listActiveBranches() {
   const sep = String.fromCharCode(0x1f);
   const fmt = `%(refname:short)${sep}%(committerdate:unix)${sep}%(objectname:short)${sep}%(contents:subject)`;
-  const raw = gitOutput(['-C', RAW_DIR, 'for-each-ref', `--format=${fmt}`, 'refs/remotes/origin/work']);
+  const allowedPrefixes = BRANCH_PREFIXES.map((p) => `${p}/`);
+  const raw = BRANCH_PREFIXES.map((prefix) => listRefsForPrefix(prefix, fmt)).filter(Boolean).join('\n');
   const now = Math.floor(Date.now() / 1000);
   const cutoff = now - ACTIVE_DAYS * 86400;
   const branches = [];
@@ -85,7 +95,7 @@ function listActiveWorkBranches() {
     const date = Number(ts);
     if (Number.isNaN(date) || date < cutoff) continue;
     const name = refname.replace(/^origin\//, '');
-    if (!name.startsWith('work/')) continue;
+    if (!allowedPrefixes.some((prefix) => name.startsWith(prefix))) continue;
     branches.push({
       name,
       slug: slugify(name),
@@ -101,7 +111,7 @@ function listActiveWorkBranches() {
 
 function pathExistsAt(sha, p) {
   try {
-    sh(`git -C "${RAW_DIR}" rev-parse "${sha}:${p}"`);
+    gitOutput(['-C', RAW_DIR, 'rev-parse', `${sha}:${p}`]);
     return true;
   } catch {
     return false;
@@ -133,13 +143,14 @@ function checkoutBranch(branch) {
 
 function main() {
   console.log(`[setup-content] ACTIVE_DAYS=${ACTIVE_DAYS}`);
+  console.log(`[setup-content] BRANCH_PREFIXES=${BRANCH_PREFIXES.join(',')}`);
 
   if (existsSync(BRANCHES_DIR)) rmSync(BRANCHES_DIR, { recursive: true, force: true });
   mkdirSync(BRANCHES_DIR, { recursive: true });
 
   fetchSourceRepo();
 
-  const branches = listActiveWorkBranches();
+  const branches = listActiveBranches();
   console.log(`[setup-content] active branches: ${branches.length}`);
   for (const b of branches) {
     console.log(`  - ${b.name} (${b.date.slice(0, 10)}) -> ${b.slug}`);

@@ -44,6 +44,7 @@ const timeoutSignal = () =>
   typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
     ? AbortSignal.timeout(FETCH_TIMEOUT_MS)
     : undefined;
+
 async function fetchNoStore(url) {
   let lastError;
   for (let attempt = 0; attempt <= FETCH_RETRIES; attempt++) {
@@ -58,6 +59,7 @@ async function fetchNoStore(url) {
   }
   throw lastError;
 }
+
 // A relative path is safe only if it stays under docs/ with no traversal.
 const safeRel = (p) =>
   typeof p === 'string' &&
@@ -65,6 +67,7 @@ const safeRel = (p) =>
     p.startsWith('docs/devlog/screenshots/') ||
     /^docs\/devlog\/[^/]+\.md$/.test(p)) &&
   !p.split('/').some((seg) => seg === '..' || seg === '' || seg === '.');
+
 const fetchPriority = (p) => {
   if (/^docs\/devlog\/[^/]+\.md$/.test(p)) return 0;
   if (p.startsWith('docs/review/')) return 1;
@@ -89,13 +92,19 @@ for (const b of idx.branches ?? []) {
   let paths;
   try {
     const res = await fetchNoStore(`${base}/manifests/${encodeURIComponent(b.slug)}.json?cb=${Date.now()}`);
-    if (!res.ok) { console.log(`[setup-r2-images] no manifest for ${b.slug} (HTTP ${res.status}); skip`); continue; }
+    if (!res.ok) {
+      console.log(`[setup-r2-images] no manifest for ${b.slug} (HTTP ${res.status}); skip`);
+      continue;
+    }
     paths = await res.json();
   } catch (e) {
     console.warn(`[setup-r2-images] manifest fetch/parse failed for ${b.slug}: ${e.message}`);
     continue;
   }
-  if (!Array.isArray(paths)) { console.warn(`[setup-r2-images] manifest for ${b.slug} is not an array; skip`); continue; }
+  if (!Array.isArray(paths)) {
+    console.warn(`[setup-r2-images] manifest for ${b.slug} is not an array; skip`);
+    continue;
+  }
 
   const branchRoot = path.resolve('content', 'branches', b.slug);
   let got = 0;
@@ -108,10 +117,14 @@ for (const b of idx.branches ?? []) {
     if (!path.resolve(dest).startsWith(branchRoot + path.sep)) return; // defence in depth
     try {
       const r = await fetchNoStore(`${url}${url.includes('?') ? '&' : '?'}cb=${Date.now()}`);
-      if (!r.ok) { console.warn(`[setup-r2-images] HTTP ${r.status} ${url}`); return; }
+      if (!r.ok) {
+        console.warn(`[setup-r2-images] HTTP ${r.status} ${url}`);
+        return;
+      }
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.writeFileSync(dest, Buffer.from(await r.arrayBuffer()));
-      got++; total++;
+      got++;
+      total++;
     } catch (e) {
       console.warn(`[setup-r2-images] download failed ${url}: ${e.message}`);
     }
@@ -119,4 +132,4 @@ for (const b of idx.branches ?? []) {
   console.log(`[setup-r2-images] ${b.slug}: fetched ${got}/${pathsToFetch.length} safe files (${paths.length} manifest paths)`);
 }
 
-console.log(`[setup-r2-images] fetched ${total} images from R2`);
+console.log(`[setup-r2-images] fetched ${total} files from R2`);

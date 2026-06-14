@@ -77,7 +77,7 @@ If you want to force a rebuild without pushing to Anemora (e.g., to test a viewe
 | Pin works | tap ★ on a doc → reload → still pinned |
 | Theme toggle | tap sun/moon in top bar → swaps + persists across reloads |
 | PWA install | Safari Share → Add to Home Screen → launches without URL bar |
-| Auto-update flow | push a commit to a `work/*` branch on anemora → wait ~3 min → reload viewer → new content appears |
+| Auto-update flow | push a commit to a `work/*` or `wip/*` branch on anemora → wait ~3 min → reload viewer → new content appears |
 
 ---
 
