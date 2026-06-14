@@ -34,7 +34,7 @@ npm run dev      # ローカル開発サーバ
 npm run build    # 本番ビルド (collect-content.mjs が src/data/branches.json と public/thumbs/, public/originals/ を生成)
 ```
 
-`npm run build` は `marvelousu/anemora` を `content/` に clone し、`work/*` / `wip/*` branch から画像と md を抽出してサムネを生成します。既定では build size を抑えるため prefix ごとの最新 1 branch を対象にします。詳細は [SPEC.md](./SPEC.md) §5.1。
+`npm run build` は `marvelousu/anemora` を `content/` に clone し、`work/*` / `wip/*` branch から画像と md を抽出してサムネを生成します。既定では build size を抑えるため prefix ごとの最新 1 branch を対象にし、`work/*` は full content、`wip/*` は Markdown + R2 review/devlog files の軽量 content として扱います。詳細は [SPEC.md](./SPEC.md) §5.1。
 
 ## デプロイ
 

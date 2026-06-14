@@ -33,6 +33,10 @@ const BRANCH_PREFIXES = (process.env.BRANCH_PREFIXES ?? 'work,wip')
   .map((s) => s.trim().replace(/^\/+|\/+$/g, ''))
   .filter(Boolean);
 const MAX_BRANCHES_PER_PREFIX = Number(process.env.MAX_BRANCHES_PER_PREFIX ?? 1);
+const FULL_CONTENT_PREFIXES = (process.env.FULL_CONTENT_PREFIXES ?? 'work')
+  .split(',')
+  .map((s) => s.trim().replace(/^\/+|\/+$/g, ''))
+  .filter(Boolean);
 const RAW_DIR = path.join(REPO_ROOT, 'content', 'anemora-raw');
 const BRANCHES_DIR = path.join(REPO_ROOT, 'content', 'branches');
 
@@ -41,6 +45,7 @@ const BRANCHES_DIR = path.join(REPO_ROOT, 'content', 'branches');
 // AUTHORS.md / CHANGELOG.md etc.).
 const TARGET_DIRS = ['docs', 'Assets/Art', 'Assets/UI'];
 const TARGET_GLOBS = ['*.md'];
+const LIGHTWEIGHT_GLOBS = ['*.md', 'docs/**/*.md'];
 
 function gitOutput(args) {
   return execFileSync('git', args, { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' }).trim();
@@ -129,11 +134,19 @@ function pathExistsAt(sha, p) {
   }
 }
 
+function usesFullContent(branchName) {
+  return FULL_CONTENT_PREFIXES.some((prefix) => branchName.startsWith(`${prefix}/`));
+}
+
 function checkoutBranch(branch) {
   const dest = path.join(BRANCHES_DIR, branch.slug);
   ensureCleanDir(dest);
+  const fullContent = usesFullContent(branch.name);
+  const targetDirs = fullContent ? TARGET_DIRS : [];
+  const targetGlobs = fullContent ? TARGET_GLOBS : LIGHTWEIGHT_GLOBS;
+  console.log(`  content mode: ${fullContent ? 'full' : 'lightweight'}`);
   // Filter to paths that exist at this commit; archive errors otherwise.
-  const presentDirs = TARGET_DIRS.filter((p) => pathExistsAt(branch.sha, p));
+  const presentDirs = targetDirs.filter((p) => pathExistsAt(branch.sha, p));
   // Globs (like *.md) don't fit cat-file checks; pass them through unconditionally.
   const archivePath = path.join(BRANCHES_DIR, `${branch.slug}.tar`);
   if (existsSync(archivePath)) rmSync(archivePath, { force: true });
@@ -146,7 +159,7 @@ function checkoutBranch(branch) {
     branch.sha,
     '--',
     ...presentDirs,
-    ...TARGET_GLOBS.map((g) => `:(glob)${g}`),
+    ...targetGlobs.map((g) => `:(glob)${g}`),
   ]);
   run('tar', ['-xf', archivePath, '-C', dest]);
   rmSync(archivePath, { force: true });
@@ -156,6 +169,7 @@ function main() {
   console.log(`[setup-content] ACTIVE_DAYS=${ACTIVE_DAYS}`);
   console.log(`[setup-content] BRANCH_PREFIXES=${BRANCH_PREFIXES.join(',')}`);
   console.log(`[setup-content] MAX_BRANCHES_PER_PREFIX=${MAX_BRANCHES_PER_PREFIX}`);
+  console.log(`[setup-content] FULL_CONTENT_PREFIXES=${FULL_CONTENT_PREFIXES.join(',')}`);
 
   if (existsSync(BRANCHES_DIR)) rmSync(BRANCHES_DIR, { recursive: true, force: true });
   mkdirSync(BRANCHES_DIR, { recursive: true });
