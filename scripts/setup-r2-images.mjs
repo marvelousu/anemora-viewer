@@ -21,6 +21,7 @@ const INDEX = 'content/branches/index.json';
 const CONCURRENCY = Number(process.env.R2_FETCH_CONCURRENCY || 8);
 const FETCH_TIMEOUT_MS = Number(process.env.R2_FETCH_TIMEOUT_MS || 30000);
 const FETCH_RETRIES = Number(process.env.R2_FETCH_RETRIES || 1);
+const MAX_REVIEW_CYCLES_PER_BRANCH = Number(process.env.R2_MAX_REVIEW_CYCLES_PER_BRANCH || 8);
 
 if (!process.env.PUBLIC_R2_BASE) {
   console.warn(`[setup-r2-images] PUBLIC_R2_BASE not set; using default ${DEFAULT_PUBLIC_R2_BASE}`);
@@ -69,12 +70,29 @@ const safeRel = (p) =>
   !p.split('/').some((seg) => seg === '..' || seg === '' || seg === '.');
 
 const isDevlogMarkdown = (p) => /^docs\/devlog\/[^/]+\.md$/.test(p);
+const reviewCycle = (p) => (p.startsWith('docs/review/') ? p.split('/')[2] : null);
 
 const fetchPriority = (p) => {
   if (isDevlogMarkdown(p)) return 0;
   if (p.startsWith('docs/review/')) return 1;
   return 2;
 };
+
+function limitReviewCycles(paths) {
+  const safePaths = paths.filter(safeRel);
+  if (MAX_REVIEW_CYCLES_PER_BRANCH <= 0) return safePaths;
+
+  const cycles = Array.from(
+    new Set(safePaths.map(reviewCycle).filter(Boolean))
+  ).sort((a, b) => b.localeCompare(a));
+  const keepCycles = new Set(cycles.slice(0, MAX_REVIEW_CYCLES_PER_BRANCH));
+
+  return safePaths.filter((p) => {
+    const cycle = reviewCycle(p);
+    if (!cycle) return true;
+    return keepCycles.has(cycle);
+  });
+}
 
 async function pool(items, n, worker) {
   let i = 0;
@@ -111,9 +129,14 @@ for (const b of idx.branches ?? []) {
   const branchRoot = path.resolve('content', 'branches', b.slug);
   let got = 0;
   let kept = 0;
-  const pathsToFetch = paths
-    .filter(safeRel)
+  const pathsToFetch = limitReviewCycles(paths)
     .sort((a, b) => fetchPriority(a) - fetchPriority(b) || b.localeCompare(a));
+  const skipped = paths.filter(safeRel).length - pathsToFetch.length;
+  if (skipped > 0) {
+    console.log(
+      `[setup-r2-images] ${b.slug}: capped R2 review fetch at ${MAX_REVIEW_CYCLES_PER_BRANCH} cycle(s), skipped ${skipped} older file(s)`
+    );
+  }
   await pool(pathsToFetch, CONCURRENCY, async (rel) => {
     const url = `${base}/tree/${encodeURIComponent(b.slug)}/${encPath(rel)}`;
     const dest = path.join(branchRoot, rel);

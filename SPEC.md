@@ -414,7 +414,7 @@ node scripts/setup-content.mjs && npm run build && npx pagefind --site dist --bu
 
 ## 13.5 Anemora source repo conventions for review workflow
 
-The viewer now exposes a dedicated **Review** tab as the default landing tab on each branch. It lists album directories under `docs/review/`. To make this work, the source repo (`marvelousu/anemora`) follows these conventions:
+The viewer now exposes a dedicated **Review** tab as the default landing tab on each branch. It lists album directories under `docs/review/`. To keep Cloudflare Pages deploys below the hard timeout, R2 review hydration fetches only the latest 8 review cycles per branch by default (`R2_MAX_REVIEW_CYCLES_PER_BRANCH=8`; set `0` only for archival rebuilds). To make this work, the source repo (`marvelousu/anemora`) follows these conventions:
 
 ### Directory naming
 
