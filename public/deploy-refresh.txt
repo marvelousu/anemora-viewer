@@ -1,1 +1,1 @@
-2026-06-14T23:11:03+09:00 wip distant valley threads 5ae87115 sync
+2026-06-14T23:36:10+09:00 wip review r2 manifest guard 0ccbc0df sync
