@@ -1,1 +1,1 @@
-2026-06-14T23:36:10+09:00 wip review r2 manifest guard 0ccbc0df sync
+2026-06-15T00:40:00+09:00 wip distant area signatures ef12cf07 sync
