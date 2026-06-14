@@ -68,8 +68,10 @@ const safeRel = (p) =>
     /^docs\/devlog\/[^/]+\.md$/.test(p)) &&
   !p.split('/').some((seg) => seg === '..' || seg === '' || seg === '.');
 
+const isDevlogMarkdown = (p) => /^docs\/devlog\/[^/]+\.md$/.test(p);
+
 const fetchPriority = (p) => {
-  if (/^docs\/devlog\/[^/]+\.md$/.test(p)) return 0;
+  if (isDevlogMarkdown(p)) return 0;
   if (p.startsWith('docs/review/')) return 1;
   return 2;
 };
@@ -108,6 +110,7 @@ for (const b of idx.branches ?? []) {
 
   const branchRoot = path.resolve('content', 'branches', b.slug);
   let got = 0;
+  let kept = 0;
   const pathsToFetch = paths
     .filter(safeRel)
     .sort((a, b) => fetchPriority(a) - fetchPriority(b) || b.localeCompare(a));
@@ -115,6 +118,10 @@ for (const b of idx.branches ?? []) {
     const url = `${base}/tree/${encodeURIComponent(b.slug)}/${encPath(rel)}`;
     const dest = path.join(branchRoot, rel);
     if (!path.resolve(dest).startsWith(branchRoot + path.sep)) return; // defence in depth
+    if (isDevlogMarkdown(rel) && fs.existsSync(dest)) {
+      kept++;
+      return;
+    }
     try {
       const r = await fetchNoStore(`${url}${url.includes('?') ? '&' : '?'}cb=${Date.now()}`);
       if (!r.ok) {
@@ -129,7 +136,7 @@ for (const b of idx.branches ?? []) {
       console.warn(`[setup-r2-images] download failed ${url}: ${e.message}`);
     }
   });
-  console.log(`[setup-r2-images] ${b.slug}: fetched ${got}/${pathsToFetch.length} safe files (${paths.length} manifest paths)`);
+  console.log(`[setup-r2-images] ${b.slug}: fetched ${got}/${pathsToFetch.length} safe files (${kept} existing devlog md kept; ${paths.length} manifest paths)`);
 }
 
 console.log(`[setup-r2-images] fetched ${total} files from R2`);
