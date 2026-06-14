@@ -1,1 +1,1 @@
-2026-06-13T09:45:00+09:00 R2 Cycle125 air alpha 0.60 review sync
+2026-06-14T15:00:00+09:00 wip environment uplift viewer/devlog sync
