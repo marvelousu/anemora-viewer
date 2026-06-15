@@ -1,1 +1,1 @@
-2026-06-15T19:15:00+09:00 wip distant vista production depth ad4742a1 sync
+2026-06-15T21:22:00+09:00 wip distant vista all-map rollout 0c218934 sync
