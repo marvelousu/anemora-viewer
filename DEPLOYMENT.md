@@ -69,6 +69,7 @@ If you want to force a rebuild without pushing to Anemora (e.g., to test a viewe
 
 | Check | How |
 |---|---|
+| Content marker | `curl -s https://anemora-viewer.pages.dev/deploy-refresh.txt` shows the build timestamp, latest source branch commit, and latest `docs/review/...` album pulled into the viewer |
 | HTTPS reachable | `curl -sI https://anemora-viewer.pages.dev` returns 200 |
 | Branch cards visible on Home | open in Safari, scroll cards |
 | Gallery loads | tap a branch → Gallery tab → tap any album → 3-col grid renders |
